@@ -2,30 +2,47 @@
 
 **An enterprise agent platform that shows its work.**
 
-Foreman runs real operational processes — supplier order confirmation, multi-way matching, exception escalation — as autonomous agents, and treats the unglamorous parts as first-class: deterministic business rules, idempotent writes, permission-aware retrieval, full execution traces, and a human review path for anything irreversible.
+Foreman handles a real business process — checking supplier order confirmations, matching them against orders and invoices, and escalating the ones a human needs to look at — using AI agents. It takes the boring parts seriously:
+
+- Business rules live in code, not in prompts.
+- A write cannot happen twice, even if the network fails halfway.
+- Search respects the permissions of the person asking.
+- Every step is recorded.
+- A human approves anything that cannot be undone.
 
 > [!IMPORTANT]
-> **Current status: specification.** The design is complete and documented; implementation has not started. This README describes what exists today and what is planned. See [Status](#status) for the phase-by-phase position and [docs/](docs/) for the specification.
+> **Current status: specification.** The design is finished and written down. No code has been written yet. This README says what exists today and what is planned. See [Status](#status) for where each phase stands, and [docs/](docs/) for the design.
 
 ---
 
-## The premise
+## The idea behind it
 
-Most agent demos invert the ratio that matters.
+Most AI agent demos get the balance backwards.
 
-In enterprise automation roughly **80% of the work is deterministic software engineering** — business rules, validation, integration, audit — and roughly **20% is probabilistic inference**, handling unstructured extraction, ambiguity and fuzzy entity matching.
+In real enterprise automation, about **80% of the work is ordinary software engineering** — business rules, validation, talking to other systems, keeping an audit trail. Only about **20% needs an AI model**, and that part is reading messy documents, handling unclear cases, and matching names that are not written the same way.
 
-Foreman is built the right way round, and the module boundaries make it explicit: every component is either deterministic or model-driven, never quietly both.
+Foreman is built that way round. Every part of the system is either **deterministic** (it follows fixed rules and always gives the same answer) or **model-driven** (it asks an AI model). Never both at once, and the folder structure makes clear which is which.
 
-A tolerance comparison is a subtraction, not an inference. A spend threshold is a rule in version control, not a sentence in a system prompt. And every control that matters — authorisation, write ceilings, idempotency — is enforced in code at dispatch, so it still holds when the model has been fooled.
+What that means in practice:
+
+- Checking whether a price is within 3% of the agreed price is subtraction. A model should not be doing it.
+- A spending limit is a rule in version control, not a sentence in a prompt.
+- Permission checks, spending caps and duplicate-write protection all run in code, at the moment the action happens. So they still work even if the model has been tricked into asking for something it should not.
 
 ---
 
 ## The problem it solves
 
-A buyer issues a purchase order. The supplier returns a confirmation — a PDF, an email, a portal record — that may differ in price, quantity or promised date. Somebody has to decide, thousands of times a month, whether each difference is acceptable.
+A buyer sends a purchase order. The supplier replies with a confirmation — a PDF, an email, or a record in a web portal — and it may not match the order. The price might be different. The quantity might be lower. The delivery date might have slipped.
 
-It is a good agent problem precisely because it is unglamorous: the input is genuinely unstructured, the decision is genuinely a rule, the writes are irreversible, and the truth is spread across four systems that disagree.
+Somebody has to decide, thousands of times a month, whether each difference is acceptable.
+
+It is a good problem for an AI agent precisely because it is unexciting:
+
+- The incoming documents really are messy, so a model is genuinely useful.
+- The decision itself really is a rule, so it belongs in code.
+- The writes cannot be undone, so safety matters.
+- The truth is spread across four systems that disagree with each other.
 
 ---
 
@@ -33,16 +50,16 @@ It is a good agent problem precisely because it is unglamorous: the input is gen
 
 | Area | Capability |
 | --- | --- |
-| **Agent engineering** | Hand-rolled agent loop with four stopping conditions · ReAct, plan-execute, reflection and routing patterns · chain, route, parallel, supervisor and evaluator-optimiser orchestration · single-agent default with a documented multi-agent trade-off |
-| **Memory** | Context window, working state, retrieved and episodic tiers with budget-triggered compaction |
-| **Protocol** | Full MCP surface — tools, resources, prompts, completion, sampling, roots, elicitation, tasks — over stdio and Streamable HTTP, with OAuth 2.1 authorization |
-| **Integration** | Mock ERP, CRM, procurement and logistics connectors · four auth patterns · per-field source-of-truth resolution · deterministic idempotency · retry, backoff and circuit breaking |
-| **Knowledge** | Hybrid dense + BM25 retrieval with rank fusion · ACL filtering before scoring · grounded generation with citations and conflict surfacing · GraphRAG for multi-hop impact analysis |
-| **Models** | One protocol over mock, local Ollama and five hosted providers — OpenAI, Anthropic, Google, Groq, OpenRouter · capability negotiation · per-tier provider chains with fallback · structured output with a repair loop · token accounting with hard budget ceilings |
-| **Security** | Three guardrail layers · prompt-injection corpus as tests · RBAC with write ceilings enforced at dispatch · multi-tenant isolation · PII redaction, retention and tested erasure |
-| **Operations** | OpenTelemetry tracing with Langfuse export · DuckDB medallion warehouse · golden traces, calibrated judge, drift detection and shadow mode · evaluation as a CI merge gate |
+| **Agent engineering** | An agent loop written from scratch, with four conditions that stop it running forever · four agent designs: ReAct, plan-then-execute, reflection, routing · five ways to arrange work: chain, route, parallel, supervisor, evaluator-optimiser · one agent by default, with a written explanation of when more than one is worth it |
+| **Memory** | Four kinds of memory — what the model sees now, what the run has worked out so far, what was looked up, and what happened in past runs — plus a way to shrink them when they get too big |
+| **Protocol** | The full Model Context Protocol surface — tools, resources, prompts, completion, sampling, roots, elicitation, tasks — over two transports, with OAuth 2.1 login |
+| **Integration** | Fake ERP, CRM, procurement and logistics systems · four ways to authenticate · deciding which system is right about which field · writes that cannot happen twice · retries, backoff and circuit breakers |
+| **Knowledge** | Two search methods combined, so exact part numbers are not lost · permission filtering applied before ranking, not after · answers with citations, and disagreements shown rather than hidden · a knowledge graph for questions that need several hops |
+| **Models** | One interface over a fake model, a local model, and five hosted providers — OpenAI, Anthropic, Google, Groq, OpenRouter · each declares what it can do · a fallback list per job · output checked against a schema, with a repair step · spending caps that stop the run before the money is spent |
+| **Security** | Guardrails at three points · a collection of real prompt-injection attacks kept as tests · permission and spending limits enforced in code · tenants kept apart · personal data removed from logs, with deletion that is tested |
+| **Operations** | OpenTelemetry tracing exported to Langfuse · a small analytics warehouse in DuckDB · recorded test runs, a scored judge, drift detection and a shadow mode · tests that block a merge if quality drops |
 
-Every row maps to an owning module and a deep-dive document in the [capability coverage map](docs/FOREMAN_SPEC.md#2-capability-coverage-map).
+Every row maps to one folder and one detailed document in the [capability coverage map](docs/FOREMAN_SPEC.md#2-capability-coverage-map).
 
 ---
 
@@ -67,7 +84,9 @@ flowchart TB
     OBS -. spans every layer .-> ORC
 ```
 
-Full diagram and rationale: [docs/architecture.md](docs/architecture.md).
+Reading the diagram from the top: a request arrives at the **service** layer, which passes it to the **orchestration** layer. That layer runs the agent loop, and draws on two separate things — the **deterministic core** for anything rule-based, and the **model layer** for anything that needs an AI model. Both then use the **capability** layer for search, protocol and security work, which in turn talks to the outside world through **connectors**. **Observability** records what happened at every level.
+
+Full explanation: [docs/architecture.md](docs/architecture.md).
 
 ---
 
@@ -75,12 +94,12 @@ Full diagram and rationale: [docs/architecture.md](docs/architecture.md).
 
 | Decision | Short version |
 | --- | --- |
-| [Business rules are code, not prompts](docs/decisions.md#adr-001--business-rules-are-code-not-prompts) | A prompt rule is applied probabilistically, cannot be unit tested, and is not an answer an auditor accepts |
-| [Two runtimes behind one protocol](docs/decisions.md#adr-002--two-runtimes-behind-one-protocol) | Hand-roll the loop because it is the lesson; use LangGraph for durability because rebuilding it badly teaches nothing |
-| [ACL filtering before scoring](docs/decisions.md#adr-005--acl-filtering-before-scoring) | Asking a model not to use what it can already see is not access control |
-| [Single agent is the default](docs/decisions.md#adr-006--single-agent-is-the-default) | Every extra agent adds hand-off surface, latency and a new failure mode |
-| [Silent errors outrank visible ones](docs/decisions.md#adr-012--silent-errors-outrank-visible-ones) | Over-escalation is annoying and tunable; a silent wrong confirmation is an incident |
-| [What was deliberately left out](docs/decisions.md#adr-016--what-was-deliberately-left-out) | Ten things declined, each with a reason |
+| [Business rules are code, not prompts](docs/decisions.md#adr-001--business-rules-are-code-not-prompts) | A rule written in a prompt is followed *most* of the time, which is the worst kind of reliability. You also cannot unit test it, and an auditor will not accept it |
+| [Two runtimes behind one protocol](docs/decisions.md#adr-002--two-runtimes-behind-one-protocol) | Write the agent loop by hand, because that is the part worth understanding. Use LangGraph for pausing and resuming runs, because rebuilding that badly teaches nothing |
+| [Permission filtering before ranking](docs/decisions.md#adr-005--acl-filtering-before-scoring) | Telling a model to ignore a document it has already been shown is not access control |
+| [One agent is the default](docs/decisions.md#adr-006--single-agent-is-the-default) | Each extra agent adds a hand-off, more delay, and a new way to fail |
+| [Silent mistakes matter more than noisy ones](docs/decisions.md#adr-012--silent-errors-outrank-visible-ones) | Escalating too often is irritating, and you can tune it. Confirming something wrong and telling nobody is an incident |
+| [What was deliberately left out](docs/decisions.md#adr-016--what-was-deliberately-left-out) | Ten things turned down, each with the reason |
 
 ---
 
@@ -88,50 +107,50 @@ Full diagram and rationale: [docs/architecture.md](docs/architecture.md).
 
 **Python 3.12** · **uv** · **Pydantic v2** · **FastAPI** · **LangGraph** · **httpx** · **Typer** · **JSON-RPC 2.0** · **numpy + rank_bm25** · **DuckDB + Parquet** · **OpenTelemetry + Langfuse** · **pytest + hypothesis** · **ruff + mypy** · **Docker** · **GitHub Actions**
 
-Full dependency list, group layout and rationale: **[docs/tech-stack.md](docs/tech-stack.md)**.
+Full list with the reason for each choice: **[docs/tech-stack.md](docs/tech-stack.md)**.
 
-Model providers, all optional and selected from configuration: **Ollama** (local) · **OpenAI** · **Anthropic** · **Google** · **Groq** · **OpenRouter**.
+Model providers, all optional and chosen in a config file: **Ollama** (runs on your own machine) · **OpenAI** · **Anthropic** · **Google** · **Groq** · **OpenRouter**.
 
-Optional services, all with tested in-process fallbacks: **Ollama**, **Neo4j**, **pgvector**.
+Optional services, each with a working substitute built in: **Ollama**, **Neo4j**, **pgvector**.
 
-> **Everything core will run with zero API keys and zero external services.** A mock model provider and in-memory stores mean the test suite passes on a clean clone, in under a minute, offline. Anyone evaluating the repository can run it immediately, which matters more than depth they will never reach.
+> **Everything important runs with no API keys and no external services.** A fake model provider and in-memory storage mean the tests pass on a fresh clone, in under a minute, with no internet. Anyone looking at this repository can run it straight away, which matters more than depth they will never get to.
 
 ---
 
 ## Quick start
 
 > [!NOTE]
-> Not yet available — implementation begins with Phase 1. These are the commands the Phase 1 gate is defined against.
+> Not available yet — this starts working in Phase 1. These are the exact commands the Phase 1 checkpoint is measured against.
 
 ```bash
 git clone https://github.com/dileepadev/foreman.git
 cd foreman
 uv sync
-uv run pytest                                   # green, no API key, no network
-uv run foreman run --scenario happy-path        # confirms all lines
-uv run foreman run --scenario price-variance    # escalates, names the rule that fired
+uv run pytest                                   # passes with no API key and no internet
+uv run foreman run --scenario happy-path        # confirms every line
+uv run foreman run --scenario price-variance    # escalates, and names the rule that fired
 ```
 
 ---
 
 ## Status
 
-Phases are dependency order, not a schedule. Each ends with a gate that either passes or does not.
+Phases run in order because each one needs the last, not because of a calendar. Each phase ends with a checkpoint that either passes or does not.
 
 | Phase | Scope | Status |
 | --- | --- | --- |
 | — | Specification and documentation | ✅ Complete |
-| 0 | Scaffold — uv project, error taxonomy, configuration | ⬜ Not started |
-| 1 | Deterministic core and the agent loop | ⬜ Not started |
-| 2 | MCP protocol and enterprise connectors | ⬜ Not started |
-| 3 | Ingestion, hybrid retrieval, GraphRAG | ⬜ Not started |
-| 4 | Tracing, warehouse, evaluation | ⬜ Not started |
+| 0 | Project setup — uv, error types, configuration | ⬜ Not started |
+| 1 | Business rules and the agent loop | ⬜ Not started |
+| 2 | MCP protocol and the four connectors | ⬜ Not started |
+| 3 | Document loading, search, knowledge graph | ⬜ Not started |
+| 4 | Tracing, analytics, testing | ⬜ Not started |
 | 5 | API, security, privacy, governance | ⬜ Not started |
-| 6 | Graph runtime, multi-agent, routing, delivery | ⬜ Not started |
+| 6 | Second runtime, multi-agent, model routing, deployment | ⬜ Not started |
 
-Detailed checklists: [TODO.md](TODO.md). Phase definitions and gates: [docs/FOREMAN_SPEC.md](docs/FOREMAN_SPEC.md#10-build-plan).
+Detailed checklists: [TODO.md](TODO.md). What each phase contains and how it is checked: [docs/FOREMAN_SPEC.md](docs/FOREMAN_SPEC.md#10-build-plan).
 
-**Phase 1 is the bar for this being worth reading.** If only Phase 1 ships, the repository is still a deterministic core, an agent loop with real stopping conditions, and a test suite that runs anywhere.
+**Phase 1 is the point where this repository becomes worth reading.** Even if nothing after it gets built, Phase 1 gives you working business rules, an agent loop that stops properly, and a test suite that runs anywhere.
 
 ---
 
@@ -139,24 +158,24 @@ Detailed checklists: [TODO.md](TODO.md). Phase definitions and gates: [docs/FORE
 
 | | |
 | --- | --- |
-| [**Specification**](docs/FOREMAN_SPEC.md) | Scope, coverage map, architecture, stack, non-functional requirements, build plan |
-| [Architecture](docs/architecture.md) | Layers, invariants, run lifecycle, failure model |
-| [Process decomposition](docs/process-decomposition.md) | Business process → decision tables → agent specification |
-| [Agent architecture](docs/agent-architecture.md) | Runtime protocol, agent and orchestration patterns |
-| [Memory](docs/memory.md) | The four tiers and compaction |
-| [MCP](docs/mcp.md) | Full protocol surface, transports, authorization, threats |
-| [Integration](docs/integration.md) | Connectors, auth patterns, write safety, resilience |
-| [Retrieval](docs/retrieval.md) | Ingestion, hybrid retrieval, GraphRAG |
-| [Models](docs/models.md) | LLM/SLM routing, structured output, cost control |
-| [Tech stack](docs/tech-stack.md) | Every dependency, why it, and what was rejected |
-| [Security](docs/security.md) | Guardrails, RBAC, injection, privacy, governance |
-| [Observability](docs/observability.md) | Traces, warehouse, metrics, silent errors |
-| [Evaluation](docs/evaluation.md) | Golden traces, judges, shadow mode, CI gating |
-| [Scalability](docs/scalability.md) | Sync/async, concurrency, rate limits, caching |
-| [Operations](docs/operations.md) | uv, Docker, CI/CD, release, sustaining |
-| [Runbook](docs/runbook.md) | Incident procedures |
-| [Decisions](docs/decisions.md) | ADR log |
-| [Glossary](docs/glossary.md) | Vocabulary |
+| [**Specification**](docs/FOREMAN_SPEC.md) | Scope, coverage map, architecture, stack, targets, build plan |
+| [Architecture](docs/architecture.md) | Layers, rules that must not be broken, what happens during a run, how it fails |
+| [Process decomposition](docs/process-decomposition.md) | Turning a business process into decision tables and an agent |
+| [Agent architecture](docs/agent-architecture.md) | The runtime interface, agent designs, ways to arrange work |
+| [Memory](docs/memory.md) | The four kinds of memory, and how to shrink them |
+| [MCP](docs/mcp.md) | The full protocol, transports, login, and the attacks to defend against |
+| [Integration](docs/integration.md) | Connectors, authentication, safe writes, handling failure |
+| [Retrieval](docs/retrieval.md) | Loading documents, search, knowledge graph |
+| [Models](docs/models.md) | Choosing a model per step, structured output, controlling cost |
+| [Tech stack](docs/tech-stack.md) | Every dependency, why it was picked, what was turned down |
+| [Security](docs/security.md) | Guardrails, permissions, prompt injection, privacy, governance |
+| [Observability](docs/observability.md) | Traces, analytics, metrics, silent mistakes |
+| [Evaluation](docs/evaluation.md) | Recorded test runs, judges, shadow mode, blocking bad merges |
+| [Scalability](docs/scalability.md) | Waiting vs doing, limits, caching |
+| [Operations](docs/operations.md) | uv, Docker, CI/CD, releases, long-term upkeep |
+| [Runbook](docs/runbook.md) | What to do when something breaks |
+| [Decisions](docs/decisions.md) | The decision log |
+| [Glossary](docs/glossary.md) | What the words mean |
 
 Full index: [docs/README.md](docs/README.md).
 
@@ -164,9 +183,9 @@ Full index: [docs/README.md](docs/README.md).
 
 ## Scope
 
-Foreman is a **reference implementation built to production engineering standards**. It is not a production system: no real tenant data, no SLA, no on-call rotation, and the connectors are mocks with realistic friction rather than vendor integrations. The engineering standards are production-grade; the operational commitments are not.
+Foreman is a **reference implementation built to professional standards**. It is not a live production system. There is no real customer data, no uptime promise, nobody on call, and the connectors are realistic fakes rather than real vendor integrations. The engineering is production quality; the operational promises are not.
 
-What it is deliberately not, and why: [docs/FOREMAN_SPEC.md §1](docs/FOREMAN_SPEC.md#1-scope-and-non-goals).
+What it deliberately is not, and why: [docs/FOREMAN_SPEC.md §1](docs/FOREMAN_SPEC.md#1-scope-and-non-goals).
 
 ---
 

@@ -2,21 +2,21 @@
 
 **This file is the single source of truth.** Guidance for AI coding agents working in this repository.
 
-`CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursor/rules/project.mdc` and `.agents/rules/project.md` all defer here. Change guidance in this file, not in those.
+`CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursor/rules/project.mdc` and `.agents/rules/project.md` all point here. Change guidance in this file, not in those.
 
 ---
 
 ## 1. What this repository is
 
-Foreman is an enterprise agent platform for procure-to-pay exception handling — a reference implementation built to production engineering standards, not a production system.
+Foreman handles supplier order confirmations using AI agents. It is a reference implementation built to professional standards. It is not a live production system.
 
-**Current state: specification. There is no code yet.** Implementation begins at Phase 0. Read [docs/FOREMAN_SPEC.md](docs/FOREMAN_SPEC.md) before writing anything.
+**Current state: specification. There is no code yet.** Work starts at Phase 0. Read [docs/FOREMAN_SPEC.md](docs/FOREMAN_SPEC.md) before you write anything.
 
-The organising principle, which decides most design questions on its own:
+The main idea, which answers most design questions on its own:
 
-> Every component is either **deterministic** or **model-driven**, never quietly both. Roughly 80% of this system is deterministic software engineering. Every control that matters is enforced in code at dispatch, never in a prompt.
+> Every part of the system is either **deterministic** (fixed rules, same answer every time) or **model-driven** (it asks an AI model). Never both at once. About 80% of this system is ordinary software engineering. Every control that matters runs in code at the moment the action happens, never in a prompt.
 
-The test for which side something belongs on: *can two competent people, given the same inputs and the policy document, disagree about the correct answer?* If not, it is a rule, and putting it in a prompt is a bug.
+How to tell which side something belongs on: *given the same inputs and the same policy document, could two competent people disagree about the right answer?* If they could not, it is a rule. Putting it in a prompt is a bug.
 
 ---
 
@@ -25,176 +25,176 @@ The test for which side something belongs on: *can two competent people, given t
 | Working on | Read first |
 | --- | --- |
 | Anything | [FOREMAN_SPEC.md](docs/FOREMAN_SPEC.md), [architecture.md](docs/architecture.md) |
-| Why something is the way it is | [decisions.md](docs/decisions.md) — 17 ADRs |
+| Why something is the way it is | [decisions.md](docs/decisions.md) — 17 decision records |
 | Rules, policies, decision tables | [process-decomposition.md](docs/process-decomposition.md) |
-| The agent loop, patterns, orchestration | [agent-architecture.md](docs/agent-architecture.md) |
-| Context, working state, compaction | [memory.md](docs/memory.md) |
+| The agent loop and how work is arranged | [agent-architecture.md](docs/agent-architecture.md) |
+| What the model sees, and shrinking it | [memory.md](docs/memory.md) |
 | MCP server or client | [mcp.md](docs/mcp.md) |
-| Connectors, auth, retries, idempotency | [integration.md](docs/integration.md) |
-| Ingestion, retrieval, GraphRAG | [retrieval.md](docs/retrieval.md) |
-| Providers, routing, cost | [models.md](docs/models.md) |
-| Guardrails, RBAC, privacy | [security.md](docs/security.md) |
-| Traces, metrics, warehouse | [observability.md](docs/observability.md) |
-| Tests, judges, CI gates | [evaluation.md](docs/evaluation.md) |
-| Async, concurrency, caching | [scalability.md](docs/scalability.md) |
+| Connectors, login, retries, safe writes | [integration.md](docs/integration.md) |
+| Loading documents, search, knowledge graph | [retrieval.md](docs/retrieval.md) |
+| Model providers, routing, cost | [models.md](docs/models.md) |
+| Guardrails, permissions, privacy | [security.md](docs/security.md) |
+| Traces, metrics, analytics | [observability.md](docs/observability.md) |
+| Tests, judges, merge checks | [evaluation.md](docs/evaluation.md) |
+| Waiting vs doing, limits, caching | [scalability.md](docs/scalability.md) |
 | Dependencies | [tech-stack.md](docs/tech-stack.md) |
-| Build, CI, release | [operations.md](docs/operations.md) |
+| Build, CI, releases | [operations.md](docs/operations.md) |
 | Something is broken | [runbook.md](docs/runbook.md) |
-| Unfamiliar term | [glossary.md](docs/glossary.md) |
+| A word you do not recognise | [glossary.md](docs/glossary.md) |
 
 ---
 
-## 3. Non-negotiables
+## 3. Rules you must not break
 
-Violating any of these is a defect, regardless of whether tests pass.
+Breaking any of these is a bug, even if every test passes.
 
-**Deterministic core**
+### Business rules
 
 1. Business rules live in `rules/` as versioned code. Never in a prompt.
-2. `rules/` and `models/` import nothing from `agent/`, `api/`, `connectors/`, `providers/` or `runtime/`.
-3. No module imports both `rules/` and `providers/` except `runtime/`.
-4. Rule evaluation returns **which rule fired**, not a boolean.
-5. Money is `Decimal`. Never `float`, anywhere on a monetary path.
+2. `rules/` and `models/` must not import from `agent/`, `api/`, `connectors/`, `providers/` or `runtime/`.
+3. No file imports both `rules/` and `providers/`, except files in `runtime/`.
+4. Evaluating a rule returns **which rule fired**, not just true or false. An escalation that cannot say why is useless to a reviewer.
+5. Money is always `Decimal`. Never `float`, anywhere money is involved.
 
-**Model boundary**
+### Model output
 
-6. Every model output crosses a Pydantic boundary before it reaches a rule, a tool argument or a write.
-7. A provider returns validated data or raises. It never returns a string a caller has to hope is JSON.
+1. Model output is untrusted input. It must pass through a Pydantic model before it reaches a rule, a tool argument, or a write.
+2. A provider returns validated data or raises an error. It never returns a string and hopes the caller can parse it.
 
-**Writes and authorisation**
+### Writes and permissions
 
-8. Every `mutates=True` tool declares a required scope. The registry refuses to register one without it.
-9. Authorisation happens at dispatch, in `security/rbac.py`, after the model chooses and before anything happens.
-10. Every mutation carries a deterministic idempotency key derived from the business payload.
-11. `ToolError` is a conversation with the model. `PolicyViolation` is not — never phrase it as correctable advice.
+1. Every tool marked `mutates=True` must declare the permission it needs. The registry refuses to accept one without it.
+2. Permission checks happen in `security/rbac.py` at dispatch — after the model has chosen, before anything actually happens.
+3. Every write carries an **idempotency key**: a fingerprint calculated from the data being written. If the network drops the reply and the code retries, the server recognises the same fingerprint and does not write twice.
+4. A `ToolError` is feedback to the model, so it can try again. A `PolicyViolation` is not — never word it as advice, or the model will try to work around it.
 
-**Retrieval**
+### Search
 
-12. ACL filtering happens **before** scoring, never after.
-13. Tenant isolation is a separate index namespace, not a metadata filter.
+ 1. Filter by permission **before** ranking results, never after.
+ 2. Keep tenants apart with a separate index per tenant, not a filter on a shared one. A filter is one forgotten line of code away from leaking another customer's data.
 
-**Observability**
+### Recording what happened
 
-14. A trace is never dropped. If the backend is down, write JSONL.
-15. Traces are redacted at write time, never at read time.
-16. The trace schema is a versioned contract — three consumers depend on it.
+ 1. Never drop a trace. If the tracing backend is down, write a JSONL file instead.
+ 2. Remove personal data as the trace is written, not when it is read.
+ 3. The trace format is a contract. Three other parts of the system read it.
 
-**Async**
+### Async code
 
-17. Never block the event loop. CPU-bound work goes to a thread via `asyncio.to_thread` — stdlib, no dependency.
-18. Every `await` has a timeout.
-19. Concurrency is bounded and per-item isolated. One failed line does not fail the run.
+ 1. Never block the event loop. CPU-heavy work goes to a thread with `asyncio.to_thread` — standard library, no dependency needed.
+ 2. Every `await` has a timeout.
+ 3. Limit how many things run at once, and isolate failures. One failed line must not fail the whole run.
 
-**Honesty**
+### Honesty
 
-20. Claim only what the code does. A document describing something unbuilt says so in its first line, and the README status table stays accurate.
+ 1. Only claim what the code actually does. A document about something not yet built says so on its first line, and the status table in the README stays accurate.
 
 ---
 
 ## 4. Conventions
 
-### Layout
+### Folder layout
 
-`src/` layout. The package is `src/foreman/`. Docs cite modules package-relative: `rules/engine.py` means `src/foreman/rules/engine.py`, and imports read `from foreman.rules import engine`.
+This project uses a `src/` layout. The package is `src/foreman/`. Documents refer to files by their path inside the package: `rules/engine.py` means `src/foreman/rules/engine.py`, and the import is `from foreman.rules import engine`.
 
 ### Code
 
-- Python 3.12. `X | None`, not `Optional[X]`. `match` where it reads better than `if`.
-- Type hints everywhere; `mypy --strict` must pass.
-- Pydantic v2 at every boundary. Constrain at field level: `quantity: int = Field(gt=0)`.
-- `async` core, thin sync facade for the CLI. Never the reverse.
-- `Protocol` for extension points, not ABCs.
-- Match the surrounding code's naming, comment density and idiom.
+- Python 3.12. Write `X | None`, not `Optional[X]`. Use `match` where it reads better than `if`.
+- Type hints everywhere. `mypy --strict` must pass.
+- Pydantic v2 wherever data enters the system. Put limits on the field itself: `quantity: int = Field(gt=0)`.
+- The core is `async`. The CLI gets a thin synchronous wrapper on top. Never the other way round.
+- Use `Protocol` for extension points, not abstract base classes.
+- Match the naming, comment style and structure of the code around you.
 
 ### Dependencies
 
-**Do not add a dependency without adding it to [tech-stack.md](docs/tech-stack.md)** with its group, its rationale and what it was chosen over. The base install is four packages and stays that way; everything else is a dependency group.
+**Do not add a dependency without adding it to [tech-stack.md](docs/tech-stack.md)**, with its group, the reason for it, and what it was chosen over. The base install is four packages and stays that way. Everything else goes in a dependency group.
 
-Before reaching for a library, check [tech-stack.md §13](docs/tech-stack.md#13-deliberately-not-in-the-stack) — it may already have been considered and declined.
+Before reaching for a library, check [tech-stack.md §13](docs/tech-stack.md#13-deliberately-not-in-the-stack). It may already have been considered and turned down.
 
 ### Commits and branches
 
-- Branch naming: [BRANCH_NAMING_GUIDELINES.md](BRANCH_NAMING_GUIDELINES.md). `main` and `dev` are protected — always branch.
+- Branch names: [BRANCH_NAMING_GUIDELINES.md](BRANCH_NAMING_GUIDELINES.md). `main` and `dev` are protected, so always work on a branch.
 - Commit format: [COMMIT_MESSAGE_GUIDELINES.md](COMMIT_MESSAGE_GUIDELINES.md) — `<type>(<scope>): <Message> (refs #N)`.
-- Small, coherent commits. One 8,000-line commit reads as generated; the history is part of the artefact.
+- Keep commits small and focused. One commit of 8,000 lines looks machine-generated; the history is part of what people judge.
 - Pull requests: [PULL_REQUEST_GUIDELINES.md](PULL_REQUEST_GUIDELINES.md).
 
 ### Documentation
 
-Documentation is versioned with the code it describes. A change to a module updates its document **in the same commit**. Design rationale goes in [decisions.md](docs/decisions.md) as an ADR — new ADRs are appended and numbered, never renumbered.
+Documentation ships with the code it describes. If you change a module, update its document **in the same commit**. Reasons for a design choice go in [decisions.md](docs/decisions.md) as a new numbered record. Add new records at the end; never renumber the existing ones.
 
 ---
 
 ## 5. Commands
 
-> Phase 0 has not run, so none of these work yet. They are the commands the phase gates are defined against.
+> Phase 0 has not run yet, so none of these work. They are the commands the phase checkpoints are measured against.
 
 ```bash
-uv sync                                  # install; base + dev groups
-uv run pytest -v                         # full suite: green, no API key, no network
-uv run pytest -m "not slow"              # fast feedback loop
+uv sync                                  # install: base packages plus dev tools
+uv run pytest -v                         # full test suite: no API key, no internet
+uv run pytest -m "not slow"              # quick subset while working
 uv run ruff check --fix && uv run ruff format
-uv run mypy .                            # strict
-uv run lint-imports                      # architectural contracts
+uv run mypy .                            # strict type checking
+uv run lint-imports                      # checks the folder rules in section 3
 
 uv run foreman run --scenario happy-path
 uv run foreman trace <run-id>
 uv run foreman eval
-uv run python -m mcp_server              # stdio
+uv run python -m mcp_server              # MCP server over stdio
 uv run uvicorn api.main:app --reload
 ```
 
 ---
 
-## 6. Phase discipline
+## 6. Phase order
 
-Six phases, **dependency order, not a schedule**. Each ends with a gate that either passes or does not. Do not start a phase before the previous gate is green — see [FOREMAN_SPEC.md §10](docs/FOREMAN_SPEC.md#10-build-plan) and the checklists in [TODO.md](TODO.md).
+There are six phases. They run in order because each one needs the one before it, not because of a calendar. Each ends with a checkpoint that either passes or does not. Do not start a phase until the previous checkpoint passes. See [FOREMAN_SPEC.md §10](docs/FOREMAN_SPEC.md#10-build-plan) and the checklists in [TODO.md](TODO.md).
 
-Phase 1 is the bar for the repository being worth reading. A repository that does two things properly beats one that does eight halfway.
+Phase 1 is the point where this repository becomes worth reading. Two things done properly beat eight done halfway.
 
 ---
 
 ## 7. Definition of done
 
-A change is finished when all of these hold:
+A change is finished when all of these are true:
 
-- [ ] `uv run pytest` green, on a clean clone, with no API key and no network
-- [ ] `uv run mypy .` clean under `--strict`
-- [ ] `uv run ruff check` and `ruff format --check` clean
-- [ ] Import contracts pass
-- [ ] New behaviour has a test; a fixed bug has a regression test
+- [ ] `uv run pytest` passes on a fresh clone, with no API key and no internet
+- [ ] `uv run mypy .` passes under `--strict`
+- [ ] `uv run ruff check` and `ruff format --check` pass
+- [ ] The import checks pass
+- [ ] New behaviour has a test; a fixed bug has a test that would have caught it
 - [ ] Any new dependency is recorded in [tech-stack.md](docs/tech-stack.md)
-- [ ] The document describing the changed module is updated in the same commit
-- [ ] The README status table still tells the truth
-- [ ] No employer, product, customer or individual names anywhere
+- [ ] The document for the module you changed is updated in the same commit
+- [ ] The status table in the README is still true
+- [ ] No employer, product, customer or personal names anywhere
 
 ---
 
-## 8. Mistakes this repository invites
+## 8. Common mistakes in this repository
 
-Specific to this codebase, in rough order of likelihood.
+Listed roughly by how often they happen.
 
-| Mistake | Instead |
+| Mistake | Do this instead |
 | --- | --- |
-| Putting a threshold or tolerance in a prompt | `rules/policies.py`, versioned, with an ID and an owner |
-| Asking the model to respect a permission | Enforce it in `security/rbac.py` at dispatch |
-| Filtering retrieval results after scoring | Pre-filter the index |
-| Appending every tool result to the context | Project to the fields the decision needs |
-| Adding a UUID idempotency key per attempt | Derive it deterministically from the business payload |
-| Retrying a 4xx | Classify first — `classify_http_error` |
-| A default tokeniser for BM25 | The one that keeps `WDG-003-A` distinct from `WDG-003-B` |
-| Reaching for LangChain, LlamaIndex or LiteLLM | Already declined, with reasons — [ADR-016](docs/decisions.md#adr-016--what-was-deliberately-left-out), [ADR-017](docs/decisions.md#adr-017--one-compatibility-adapter-plus-native-adapters-where-they-pay) |
-| Adding a second agent because it feels more capable | Single agent is the default — [ADR-006](docs/decisions.md#adr-006--single-agent-is-the-default) |
-| A `print()` in an MCP stdio handler | stderr only; stdout carries protocol messages |
-| Optimising auto-resolution rate alone | Report it paired with silent-error rate |
-| Writing a document for a module that does not exist | Mark its status line honestly |
+| Putting a threshold or a limit in a prompt | Put it in `rules/policies.py`, with an ID, a version and an owner |
+| Asking the model to respect a permission | Enforce it in `security/rbac.py`, at dispatch |
+| Filtering search results after ranking them | Filter the index before ranking |
+| Adding every tool result to the conversation | Keep only the fields the decision needs |
+| Using a random ID as the idempotency key | Calculate it from the data being written, so a retry produces the same key |
+| Retrying an HTTP 4xx error | Classify the error first with `classify_http_error`. 4xx means the request was wrong and will stay wrong |
+| Using a default tokeniser for BM25 search | Use the one that keeps `WDG-003-A` and `WDG-003-B` apart |
+| Reaching for LangChain, LlamaIndex or LiteLLM | Already turned down, with reasons — [ADR-016](docs/decisions.md#adr-016--what-was-deliberately-left-out), [ADR-017](docs/decisions.md#adr-017--one-compatibility-adapter-plus-native-adapters-where-they-pay) |
+| Adding a second agent because it sounds more capable | One agent is the default — [ADR-006](docs/decisions.md#adr-006--single-agent-is-the-default) |
+| A `print()` inside an MCP stdio handler | Print to stderr. Standard output carries protocol messages, and anything else breaks the connection |
+| Reporting only how often the agent finished on its own | Always report it next to how often it was silently wrong |
+| Writing a document for a module that does not exist | Say so honestly in its status line |
 
 ---
 
-## 9. When you are unsure
+## 9. When you are not sure
 
-1. Check [decisions.md](docs/decisions.md) — the question may already be answered, including the alternatives that were rejected.
-2. Check [glossary.md](docs/glossary.md) — terms in this repository have specific meanings.
-3. Prefer the deterministic option. It is testable, auditable and free.
-4. Prefer the smaller surface. Anything that adds surface without adding evidence was cut on purpose.
-5. If a design question is genuinely open, write it down as an ADR with the alternatives rather than deciding silently in code.
+1. Check [decisions.md](docs/decisions.md). The question may already be answered, including the options that were rejected.
+2. Check [glossary.md](docs/glossary.md). Words in this repository have specific meanings.
+3. Prefer the deterministic option. It is testable, explainable and free to run.
+4. Prefer the smaller option. Anything that added complexity without adding proof was cut on purpose.
+5. If a design question is genuinely open, write it up as a decision record with the options, rather than quietly deciding it in code.
