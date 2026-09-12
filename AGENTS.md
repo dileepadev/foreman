@@ -131,7 +131,7 @@ Before reaching for a library, check [tech-stack.md §13](docs/tech-stack.md#13-
 
 ### Issues, pull requests and releases
 
-**Every issue**
+#### Every issue
 
 - Use a template from [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/) and keep its title prefix — `📝 Docs:`, `🌱 Feature:`, `🐞 Bug:`.
 - Add the target version in brackets at the end: `… [v0.1.0]`.
@@ -139,7 +139,7 @@ Before reaching for a library, check [tech-stack.md §13](docs/tech-stack.md#13-
 - Apply the label the template names, and make it match the work. A documentation issue gets `documentation`, not `enhancement`. Wrong labels are worse than none.
 - Attach the milestone for the release being worked toward.
 
-**Every pull request**
+#### Every pull request
 
 - Title follows [PULL_REQUEST_GUIDELINES.md](PULL_REQUEST_GUIDELINES.md): `<type>(<branch>): <Message> [#issue]`.
 - Body follows [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md). Fill in every required section and tick the checklist honestly — if you did not test something, leave it unticked and say why.
@@ -147,7 +147,7 @@ Before reaching for a library, check [tech-stack.md §13](docs/tech-stack.md#13-
 - Link the issue it closes with `Closes #N`, so the issue closes on merge.
 - **Never merge without being asked.** Prepare it, then hand it over.
 
-**Commit signatures**
+#### Commit signatures
 
 Every commit must be signed and show as **Verified** on GitHub. Signing is already configured — SSH format, key in `~/.ssh`, `commit.gpgsign=true`.
 
@@ -156,7 +156,7 @@ Every commit must be signed and show as **Verified** on GitHub. Signing is alrea
 - Merge with a fast-forward push (`git push origin <branch>:main`) or "Create a merge commit". Both keep the original signatures.
 - After any merge, confirm the commits on `main` still show Verified.
 
-**Releases**
+#### Releases
 
 - Tag only when every item in [FOREMAN_SPEC.md §13](docs/FOREMAN_SPEC.md#13-acceptance-criteria) passes.
 - Before tagging: update [CHANGELOG.md](CHANGELOG.md), make the README status table true, and bump the version in `pyproject.toml`.
