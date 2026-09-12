@@ -39,7 +39,7 @@ Phases are **dependency order, not a schedule**. Each phase ends with a gate tha
 - [x] Development, operations and runbook
 - [x] Architecture decision records and glossary
 - [x] Complete tech stack: dependency groups, versions, licences, supply chain
-- [x] [AGENT.md](AGENT.md) — non-negotiables, conventions, phase discipline and definition of done for AI coding agents
+- [x] [AGENTS.md](AGENTS.md) — the rules, conventions, phase order and definition of done for AI coding agents, following the [agents.md](https://agents.md/) standard
 
 ---
 

@@ -72,4 +72,4 @@ Specification and design documentation for Foreman, an enterprise agent platform
 | [../VERSIONING.md](../VERSIONING.md) | Version scheme and release process |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | How to contribute |
 | [../SECURITY.md](../SECURITY.md) | Vulnerability reporting |
-| [../AGENT.md](../AGENT.md) | Guidance for AI coding agents |
+| [../AGENTS.md](../AGENTS.md) | Guidance for AI coding agents, per the [agents.md](https://agents.md/) standard |

@@ -1,3 +1,3 @@
 # Guidance
 
-Follow the guidance in [AGENT.md](AGENT.md).
+Follow the guidance in [AGENTS.md](AGENTS.md).

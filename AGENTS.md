@@ -1,8 +1,8 @@
-# AGENT.md
+# AGENTS.md
 
 **This file is the single source of truth.** Guidance for AI coding agents working in this repository.
 
-`CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursor/rules/project.mdc` and `.agents/rules/project.md` all point here. Change guidance in this file, not in those.
+It follows the [agents.md](https://agents.md/) standard: one file at the repository root that any coding agent can read, rather than a separate file per tool. `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursor/rules/project.mdc` and `.agents/rules/project.md` exist only to point here. Change guidance in this file, not in those.
 
 ---
 

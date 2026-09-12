@@ -200,7 +200,7 @@ Contributions are welcome. Please read:
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — expected conduct
 - [SECURITY.md](SECURITY.md) — reporting vulnerabilities
 
-Working on this with an AI coding agent? Start at [AGENT.md](AGENT.md).
+Working on this with an AI coding agent? Start at [AGENTS.md](AGENTS.md), which follows the [agents.md](https://agents.md/) standard.
 
 ---
 
