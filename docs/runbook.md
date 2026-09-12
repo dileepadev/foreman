@@ -124,13 +124,11 @@ Never skip step 5. A fix without a regression test is an invitation to repeat.
 
 1. Trace an affected run and find the repeating signature.
 2. Usual causes:
-
-- a tool returns an error the model cannot do anything with
-- there is no tool for an action the agent needs
-- a prompt became ambiguous after a change
-- a tool description does not mention a precondition
-
-1. Fix the tool's error message or description before touching the prompt — a `ToolError` with a good `suggestion` fixes more loops than prompt edits do.
+   - a tool returns an error the model cannot do anything with
+   - there is no tool for an action the agent needs
+   - a prompt became ambiguous after a change
+   - a tool description does not mention a precondition
+3. Fix the tool's error message or description before touching the prompt — a `ToolError` with a good `suggestion` fixes more loops than prompt edits do.
 
 ### 4.7 Review queue backing up — Sev 3
 
