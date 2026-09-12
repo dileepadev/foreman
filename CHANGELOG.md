@@ -11,7 +11,13 @@ Changes are organized into the following categories:
 
 ## [Unreleased]
 
-- Changes for the next release are available in development branches.
+### Added - Unreleased
+
+- Complete technical specification for Foreman, covering scope, capability coverage map, architecture, non-functional requirements, build plan and acceptance criteria.
+- Design documentation set: architecture, process decomposition, agent architecture, memory, MCP, integration, retrieval, models, tech stack, security, observability, evaluation, scalability, operations and runbook.
+- Seventeen architecture decision records, including the alternatives rejected and what was deliberately left out.
+- Glossary and documentation index.
+- Phase-by-phase build plan with an explicit gate for each phase.
 
 ## [v0.1.0] - 2026-03-25
 
