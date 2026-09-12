@@ -1,0 +1,124 @@
+[project]
+name = "foreman"
+version = "0.1.0"
+description = "An enterprise agent platform that shows its work."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "dileepadev" }]
+keywords = ["ai-agents", "mcp", "rag", "llm", "procurement"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "httpx>=0.27",
+    "typer>=0.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/dileepadev/foreman"
+Documentation = "https://github.com/dileepadev/foreman/tree/main/docs"
+Issues = "https://github.com/dileepadev/foreman/issues"
+
+[project.scripts]
+foreman = "foreman.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.112",
+    "ruff>=0.7",
+    "mypy>=1.13",
+    "import-linter>=2.1",
+]
+api      = ["fastapi>=0.115", "uvicorn[standard]>=0.32", "sse-starlette>=2.1"]
+mcp      = ["mcp[cli]>=1.9"]
+graph    = ["langgraph>=1.0", "langgraph-checkpoint-sqlite>=2.0", "neo4j>=5.25"]
+models   = ["openai>=1.54", "anthropic>=0.39", "google-genai>=1.0", "ollama>=0.4"]
+rag      = ["numpy>=1.26", "rank-bm25>=0.2.2", "pypdf>=5.1", "pdfplumber>=0.11"]
+pgvector = ["psycopg[binary]>=3.2", "pgvector>=0.3"]
+obs = [
+    "opentelemetry-sdk>=1.28",
+    "opentelemetry-exporter-otlp>=1.28",
+    "langfuse>=3.0",
+    "duckdb>=1.1",
+    "pyarrow>=18.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/foreman"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+# Do not format Python inside Markdown. The code samples in docs/ are
+# illustrative, hand-aligned for readability, and reference types that do not
+# exist yet. A formatter adds churn there without adding value.
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "PT", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+mypy_path = "src"
+packages = ["foreman"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["slow: excluded from the fast feedback loop"]
+
+[tool.coverage.run]
+source = ["src/foreman"]
+branch = true
+
+[tool.importlinter]
+root_package = "foreman"
+
+[[tool.importlinter.contracts]]
+name = "Deterministic core imports nothing above it"
+type = "forbidden"
+source_modules = ["foreman.rules", "foreman.models"]
+forbidden_modules = [
+    "foreman.providers",
+    "foreman.agent",
+    "foreman.runtime",
+    "foreman.api",
+    "foreman.connectors",
+]
+
+[[tool.importlinter.contracts]]
+name = "Only the runtime may combine rules and providers"
+type = "forbidden"
+source_modules = ["foreman.agent", "foreman.utils", "foreman.core"]
+forbidden_modules = ["foreman.rules"]
+
+[[tool.importlinter.contracts]]
+name = "Layered architecture"
+type = "layers"
+layers = [
+    "foreman.runtime",
+    "foreman.agent",
+    "foreman.providers",
+    "foreman.utils",
+    "foreman.core",
+]
