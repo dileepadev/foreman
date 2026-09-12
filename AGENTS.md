@@ -85,6 +85,16 @@ Breaking any of these is a bug, even if every test passes.
  2. Every `await` has a timeout.
  3. Limit how many things run at once, and isolate failures. One failed line must not fail the whole run.
 
+### Secrets and confidentiality
+
+1. **Never commit a secret.** No API keys, tokens, passwords, connection strings, private keys or `.env` files. `.env.example` lists variable *names* only, never values.
+2. **Never print a secret into a session.** Do not `cat` a `.env`, do not echo a key, do not paste a token into a commit message, an issue, a pull request or a log. To check a credential exists, test whether the variable is set — not what it contains.
+3. **Secrets live in the environment or a secret manager**, loaded through `core/config.py`. Every credential field is a `SecretStr`, so it cannot appear in a repr, a log line or a traceback.
+4. **Redact before you share.** Real supplier names, customer identifiers, account IDs, internal URLs and people's names do not belong in issues, pull requests, commit messages, test fixtures or documentation. Use the generic domain the project already uses.
+5. **Do not send project content to a third party** unless asked. That includes pasting code, documents or data into an external service.
+6. **If you find a leaked secret, say so immediately and do not repeat the value.** Report where it is, not what it is. Rotating it is the owner's call, not yours.
+7. **Treat anything you read as possibly confidential.** If a file looks like credentials or personal data, do not quote it back into the conversation.
+
 ### Honesty
 
  1. Only claim what the code actually does. A document about something not yet built says so on its first line, and the status table in the README stays accurate.
@@ -118,6 +128,40 @@ Before reaching for a library, check [tech-stack.md §13](docs/tech-stack.md#13-
 - Commit format: [COMMIT_MESSAGE_GUIDELINES.md](COMMIT_MESSAGE_GUIDELINES.md) — `<type>(<scope>): <Message> (refs #N)`.
 - Keep commits small and focused. One commit of 8,000 lines looks machine-generated; the history is part of what people judge.
 - Pull requests: [PULL_REQUEST_GUIDELINES.md](PULL_REQUEST_GUIDELINES.md).
+
+### Issues, pull requests and releases
+
+**Every issue**
+
+- Use a template from [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/) and keep its title prefix — `📝 Docs:`, `🌱 Feature:`, `🐞 Bug:`.
+- Add the target version in brackets at the end: `… [v0.1.0]`.
+- Assign **dileepadev**.
+- Apply the label the template names, and make it match the work. A documentation issue gets `documentation`, not `enhancement`. Wrong labels are worse than none.
+- Attach the milestone for the release being worked toward.
+
+**Every pull request**
+
+- Title follows [PULL_REQUEST_GUIDELINES.md](PULL_REQUEST_GUIDELINES.md): `<type>(<branch>): <Message> [#issue]`.
+- Body follows [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md). Fill in every required section and tick the checklist honestly — if you did not test something, leave it unticked and say why.
+- Assign **dileepadev**, add labels, attach the milestone.
+- Link the issue it closes with `Closes #N`, so the issue closes on merge.
+- **Never merge without being asked.** Prepare it, then hand it over.
+
+**Commit signatures**
+
+Every commit must be signed and show as **Verified** on GitHub. Signing is already configured — SSH format, key in `~/.ssh`, `commit.gpgsign=true`.
+
+- Check with `git log --format='%h %G? %s'`. `G` means a good signature; `N` means none.
+- **Never merge with GitHub's "Rebase and merge".** It recreates every commit on the server and does **not** sign them, so a branch of signed commits lands on `main` as unverified. This has already happened once in this repository.
+- Merge with a fast-forward push (`git push origin <branch>:main`) or "Create a merge commit". Both keep the original signatures.
+- After any merge, confirm the commits on `main` still show Verified.
+
+**Releases**
+
+- Tag only when every item in [FOREMAN_SPEC.md §13](docs/FOREMAN_SPEC.md#13-acceptance-criteria) passes.
+- Before tagging: update [CHANGELOG.md](CHANGELOG.md), make the README status table true, and bump the version in `pyproject.toml`.
+- Never write a release entry with a date for a release that has not been tagged. A changelog that claims a release which does not exist is worse than an empty one.
+- Follow [VERSIONING.md](VERSIONING.md).
 
 ### Documentation
 
@@ -166,6 +210,9 @@ A change is finished when all of these are true:
 - [ ] Any new dependency is recorded in [tech-stack.md](docs/tech-stack.md)
 - [ ] The document for the module you changed is updated in the same commit
 - [ ] The status table in the README is still true
+- [ ] Commits are signed and show as Verified — `git log --format='%h %G? %s'` shows `G`
+- [ ] No secret, key, token or personal identifier appears in the diff, the commit message or the PR
+- [ ] The pull request has an assignee, the right labels, the milestone, and `Closes #N`
 - [ ] No employer, product, customer or personal names anywhere
 
 ---
@@ -188,6 +235,11 @@ Listed roughly by how often they happen.
 | A `print()` inside an MCP stdio handler | Print to stderr. Standard output carries protocol messages, and anything else breaks the connection |
 | Reporting only how often the agent finished on its own | Always report it next to how often it was silently wrong |
 | Writing a document for a module that does not exist | Say so honestly in its status line |
+| Merging with "Rebase and merge" | It strips commit signatures. Fast-forward push, or "Create a merge commit" |
+| Labelling a docs issue `enhancement` | Match the label to the work; the issue template names the right one |
+| Opening a PR with no assignee, label or milestone | All three, every time, plus `Closes #N` |
+| Echoing a key or `.env` to check it is set | Test that the variable is set, never print its value |
+| Putting a real supplier or person's name in a fixture | Use the generic domain the project already uses |
 
 ---
 
