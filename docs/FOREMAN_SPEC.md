@@ -786,19 +786,34 @@ uv run foreman run --scenario price-variance    # escalates, names the rule that
 
 ## 11. Release cuts
 
-Version numbers follow [VERSIONING.md](../VERSIONING.md). Cuts are defined by capability, not by date.
+Version numbers follow [VERSIONING.md](../VERSIONING.md).
 
-| Cut | Contains | Publicly defensible claim |
+**Nothing has been released yet.** There are no tags and no GitHub releases. `v0.1.0` is the initial release, and everything currently planned belongs to it: the documentation set and all seven build phases.
+
+Until `v0.1.0` is tagged, every issue and pull request carries `[v0.1.0]` in its title.
+
+### What v0.1.0 contains
+
+| Stage | Contains | Status |
 | --- | --- | --- |
-| `v0.2.0` | Specification and documentation set | "Here is the design, the decisions and what is deliberately excluded." |
-| `v0.3.0` | Phases 0–1 | "A deterministic core and an agent loop with real stopping conditions, tested." |
-| `v0.4.0` | Phases 2–3 | "MCP, four enterprise connectors, hybrid and graph retrieval." |
-| `v0.5.0` | Phases 4–5 | "Traced, evaluated, guarded and served." |
-| `v1.0.0` | Phase 6 | "Two conformant runtimes, routed models, containerised, CI-gated on evaluation." |
+| Documentation | Specification, architecture, all 19 design documents | Complete |
+| Phase 0 | Project scaffold, error types, configuration | Not started |
+| Phase 1 | Business rules and the agent loop | Not started |
+| Phase 2 | MCP protocol and the four connectors | Not started |
+| Phase 3 | Document loading, search, knowledge graph | Not started |
+| Phase 4 | Tracing, analytics, evaluation | Not started |
+| Phase 5 | API, security, privacy, governance | Not started |
+| Phase 6 | Second runtime, model routing, delivery | Not started |
 
-Phase 0 has no cut of its own. Its gate is that the test suite collects zero tests without error, which is not something to release, so it ships with Phase 1.
+Phase 0 has no output worth releasing on its own — its gate is that the test suite collects zero tests without error — so it is simply the first step, not a cut.
 
-Each cut updates [CHANGELOG.md](../CHANGELOG.md) and the README status table before tagging. Every phase is tracked as a GitHub issue whose title carries its target version.
+### Tagging v0.1.0
+
+The release is ready when every item in [§13 Acceptance criteria](#13-acceptance-criteria) passes. Before tagging: update [CHANGELOG.md](../CHANGELOG.md), make the README status table true, and bump the version in `pyproject.toml`.
+
+### After v0.1.0
+
+Later versions follow SemVer as described in [VERSIONING.md](../VERSIONING.md): patch for fixes, minor for backward-compatible features, major for breaking changes. There is no point planning those cuts now, because what comes after the initial release depends on what the initial release teaches.
 
 ---
 
