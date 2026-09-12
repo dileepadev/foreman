@@ -155,7 +155,11 @@ When demand exceeds capacity, something must give. The only real choice is what.
 | Drop silently | Data loss | **Never** |
 | Unbounded queue | Memory exhaustion, then everything fails at once | **Never** |
 
-**An unbounded queue is not backpressure; it is deferred failure.** Latency grows until every request times out, the queue holds work nobody is waiting for any more, and the failure arrives all at once with no useful signal. Bounded queue plus explicit rejection means callers learn immediately and can retry sensibly.
+**A queue with no size limit does not fix overload. It only delays the crash.**
+
+Here is what happens. Requests pile up. They get slower. In the end they all time out. By then the queue is full of work nobody is waiting for. Everything fails at the same moment, and nothing tells you why.
+
+So give the queue a limit. When it is full, refuse new work and say so. The caller finds out straight away and can try again later.
 
 Rejection carries a `Retry-After` derived from the actual queue drain rate, so a client's retry has some chance of succeeding.
 

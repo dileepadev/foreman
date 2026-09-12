@@ -31,7 +31,7 @@ The terms are used loosely enough to be useless, so this project defines them by
 | Failure mode | Wrong text | Wrong action, possibly irreversible |
 | What it needs | A good prompt | Stopping conditions, authorisation, idempotency, audit |
 
-The important consequence: **the moment a model's output selects the next action, prompt quality stops being the dominant risk and control becomes the dominant risk.** Foreman is an agentic system, so roughly 80% of its code is control.
+This has one important consequence. **As soon as a model's output decides what happens next, the main risk stops being prompt quality and becomes control.** Foreman is an agentic system, so roughly 80% of its code is control.
 
 ### The spectrum this project actually implements
 
@@ -106,7 +106,7 @@ Two properties distinguish this from the loop in most tutorials:
 
 ## 4. Stopping conditions
 
-An agent without stopping conditions is an unbounded bill and an unbounded blast radius. Four, all mandatory:
+An agent with nothing to stop it runs up an unlimited bill and can do unlimited damage. Four, all mandatory:
 
 | Condition | Trigger | `StopReason` |
 | --- | --- | --- |
@@ -187,7 +187,7 @@ Four architectures implemented as comparable strategies under `runtime/patterns/
 The default. The model interleaves reasoning with tool calls, each observation informing the next step.
 
 - **Good for**: variable-length tasks where the next step depends on what was just learned. Order confirmation, because you cannot know whether retrieval is needed until you see the variance.
-- **Costs**: one model call per step; latency scales with steps; without a step ceiling it wanders.
+- **Costs**: one model call per step; latency scales with steps; without a step limit it drifts off task.
 - **Used for**: the primary order-confirmation agent.
 
 ### 6.2 Plan-then-execute

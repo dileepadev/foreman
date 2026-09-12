@@ -2,7 +2,12 @@
 
 > Status: specification. Ingestion, hybrid retrieval and grounded generation are Phase 3; graph community summaries land with the Neo4j backend.
 
-Retrieval in an enterprise setting has two requirements a demo does not: it must find exact identifiers, and it must not return documents the caller may not see. Both break naive vector search, and both are load-bearing here.
+Search inside a company has two requirements a demo does not have:
+
+1. It must find exact identifiers, such as a part number.
+2. It must never return a document the person is not allowed to see.
+
+Plain vector search fails at both, and both matter here.
 
 ## Table of contents
 
@@ -28,7 +33,7 @@ Foreman retrieves when the deterministic path cannot decide. Three cases, and no
 | A variance needs precedent | "How were similar variances handled for this supplier?" | Hybrid over episodic summaries |
 | A change has downstream impact | "If part WDG-003-A is discontinued, what is affected?" | Graph traversal |
 
-**Retrieval is a tool call, not a preamble.** A 2% variance inside a band nobody disputes needs no contract lookup, and paying for one on every run is how a $0.02 run becomes a $0.20 run.
+**Search is a tool the agent calls when it needs to, not something that runs every time.** A 2% price difference that sits well inside an agreed tolerance needs no contract lookup at all. Paying for one on every run is how a $0.02 run turns into a $0.20 run.
 
 ---
 
@@ -45,7 +50,7 @@ flowchart LR
 
 ### Extraction
 
-Text and tables from a mixed corpus: contracts, amendments, price lists, specifications, email bodies. **Tables matter more than prose here** — a price list rendered as a table and flattened into a text blob loses the row-column relationship that made it useful, and the retriever then returns a paragraph containing every number and none of the structure.
+Text and tables from a mixed corpus: contracts, amendments, price lists, specifications, email bodies. **Tables matter more than ordinary text here.** Flatten a price list into a blob of text and you lose the rows and columns that made it useful. Search then returns a paragraph containing every number and no structure at all.
 
 ### Deduplication
 
@@ -86,7 +91,7 @@ Chunk boundaries determine what can be found. The failure is always the same: a 
 | Tables | Kept whole where possible; header row repeated per split | A price row without its header is noise |
 | Metadata | Every chunk carries the parent document's full metadata | ACL filtering needs it on the chunk, not the document |
 
-The last row is the one that gets skipped. If ACLs live on the document and the index holds chunks, filtering requires a join at query time — which is slow enough that somebody eventually moves the filter after scoring, which breaks the security model. Denormalise the metadata onto the chunk.
+The last row is the one that gets skipped. If permissions live on the document but the index holds chunks, filtering needs a join at query time. That is slow. Sooner or later somebody moves the filter to after ranking to speed it up, and the security model is broken. Denormalise the metadata onto the chunk.
 
 ---
 
@@ -108,9 +113,13 @@ Foreman's tokeniser **preserves hyphenated alphanumerics as single tokens** whil
 
 ### Where embeddings come from
 
-Embeddings are produced through the provider layer, not a separate dependency: a deterministic hash-based embedding in the mock, so retrieval tests are reproducible offline and cost nothing; a local embedding model via Ollama in development; a hosted embedding endpoint when configured.
+Embeddings come from the provider layer, not from a separate dependency. There are three sources:
 
-Two consequences worth stating. Embeddings are **cached by content hash** and are permanently valid for a given model, so re-indexing unchanged documents is free. And the **embedding model identifier is stored alongside every vector** — vectors from different models are not comparable, so changing the embedding model forces a full re-index rather than silently degrading every similarity score in the index.
+- **Mock** — a fixed hash-based embedding, so search tests give the same result every time, offline and free.
+- **Local** — an embedding model running in Ollama, for development.
+- **Hosted** — a provider's embedding endpoint, when one is configured.
+
+Two consequences worth stating. Embeddings are **cached by content hash** and are permanently valid for a given model, so re-indexing unchanged documents is free. Second, the **name of the embedding model is stored next to every vector**. Vectors made by different models cannot be compared with each other. Storing the model name means changing it forces a full re-index, instead of quietly ruining every similarity score in the index.
 
 ### Fusion
 
@@ -275,4 +284,10 @@ Retrieval is evaluated separately from generation, because a good answer from ba
 
 ### The corpus
 
-`tests/corpus/` ships a small, deliberately adversarial document set: part numbers one character apart, a contract with a later amendment that changes a tolerance, a superseded price list, documents with divergent ACLs, and a document containing embedded instruction text for the injection tests. Every metric above is measured against it in CI.
+`tests/corpus/` contains a small document set built to be difficult on purpose:
+
+- part numbers that differ by one character
+- a contract with a later amendment that changes a tolerance
+- a price list that has been replaced by a newer one
+- documents with different permission settings
+- a document with instruction text hidden inside it, for the injection tests Every metric above is measured against it in CI.

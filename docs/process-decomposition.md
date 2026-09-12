@@ -54,7 +54,7 @@ The useful questions are not "what does the process do." They are the ones that 
 | Who do you ask when you are not sure? | The escalation target and its trigger |
 | Which of these fields do you actually trust? | Source-of-truth per field |
 | How often does this happen? | Whether it is worth automating at all |
-| What happens downstream if you get it wrong? | Blast radius, and therefore the write ceiling |
+| What happens downstream if you get it wrong? | How much damage a mistake causes, and therefore the spending limit |
 
 ### What to record
 
@@ -105,7 +105,7 @@ Two properties are checked by tests, not by review:
 - **Exhaustive** — for any input, at least one rule matches. A `hypothesis` test generates variances and asserts a rule always fires. The catch-all is explicit, never implicit.
 - **Unambiguous** — no two rules match the same input with different outcomes, or if they do, precedence is declared.
 
-A decision table that fails either check is a bug report for the SME, and finding one is a good day: it means an ambiguity that would have surfaced in production surfaced in a workshop instead.
+A decision table that fails either check is a question for the expert, not a problem. Finding one is a good day. It means an ambiguity that would have shown up in production showed up in a workshop instead.
 
 ---
 
@@ -211,7 +211,7 @@ An agent that cannot be measured against the process it replaced will be switche
 | Business KPI | System metric | Target | Why this one |
 | --- | --- | --- | --- |
 | Touchless processing rate | `auto_resolution_rate` | Up, subject to precision | The headline value |
-| Buyer time on exceptions | `escalation_precision` | ≥ 0.90 | Low precision trains people to rubber-stamp |
+| Buyer time on exceptions | `escalation_precision` | ≥ 0.90 | If precision is low, people learn to approve without reading |
 | Errors reaching the ledger | `silent_error_rate` | 0 | The metric that decides trust |
 | Cycle time | `p95_run_latency` | Down | Suppliers notice |
 | Cost to serve | `cost_per_run` | < $0.02 | Automation that costs more than the clerk is not automation |

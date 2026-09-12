@@ -46,7 +46,14 @@ Each record is short on purpose. A decision that needs three pages of justificat
 
 **Decision.** Both, behind one `Runtime` protocol, with a shared conformance suite. `runtime/native.py` is hand-rolled and is the default for tests and CLI. `runtime/langgraph_runtime.py` uses LangGraph and is the default for the served API.
 
-**Why LangGraph specifically.** Durable execution with a checkpointer per thread; `interrupt()` / `Command(resume=...)` matching the review-queue shape exactly; a cross-thread Store mapping onto episodic memory; subgraphs and supervisor topologies for the multi-agent work; OpenTelemetry-compatible tracing that feeds the same Langfuse pipeline; and an explicit graph with no hidden control flow, which matters in a repository whose premise is that the reasoning is inspectable.
+**Why LangGraph specifically.** Six reasons:
+
+- Runs survive a restart, because each one is checkpointed.
+- `interrupt()` and `Command(resume=...)` match the review queue exactly: pause, wait for a human, carry on.
+- A cross-thread store maps directly onto episodic memory.
+- Subgraphs and supervisor patterns cover the multi-agent work.
+- Its tracing is OpenTelemetry-compatible, so it feeds the same Langfuse pipeline.
+- The graph is explicit, with no hidden control flow. That matters in a repository whose whole point is that you can inspect the reasoning.
 
 **Cost.** Two implementations to keep in step. Mitigated by the conformance suite — a new runtime is not a runtime until it passes. Without that suite this would be sprawl rather than a decision.
 
@@ -93,7 +100,7 @@ Each record is short on purpose. A decision that needs three pages of justificat
 
 **Decision.** The permission filter is applied to the index before scoring, always.
 
-**Why.** Post-filtering leaks in two ways. The obvious one: top-k is consumed by documents the caller cannot see, so a permitted document ranked 11th silently disappears. The subtle one: result counts and latencies reveal that restricted documents exist. And once a restricted chunk is in the window, it is in the answer, the trace and possibly the episodic memory — asking a model not to use what it can already see is not access control.
+**Why.** Post-filtering leaks in two ways. The obvious one: top-k is consumed by documents the caller cannot see, so a permitted document ranked 11th silently disappears. The subtle one: result counts and latencies reveal that restricted documents exist. And once a restricted chunk is in the context window, it is also in the answer, in the trace, and possibly in episodic memory. Telling a model to ignore something you have already shown it is not access control.
 
 **Cost.** The index must support filtered search efficiently, and ACL metadata must be denormalised onto every chunk rather than kept on the parent document.
 
@@ -103,7 +110,7 @@ Each record is short on purpose. A decision that needs three pages of justificat
 
 **Context.** Multi-agent architectures are the most fashionable pattern in the field.
 
-**Decision.** One agent unless a specific criterion is met: tool sets diverge, permissions differ, models differ, or hand-offs need supervision. Foreman ships a supervisor topology because criteria 2 and 3 hold — extraction should be unprivileged and cheap, adjudication privileged and capable — and documents the trade-off rather than presenting the split as obviously better.
+**Decision.** One agent unless a specific criterion is met: tool sets diverge, permissions differ, models differ, or hand-offs need supervision. Foreman includes a supervisor setup because reasons 2 and 3 apply here. Extraction should be cheap and hold no write permissions. Judging a case needs both permissions and a capable model. The trade-off is written down rather than presented as obviously correct.
 
 **Why.** Every additional agent adds a hand-off surface, latency, 3–5× token usage from re-established context, an extra loop with its own stopping conditions, harder debugging from interleaved traces, and an attribution problem in evaluation.
 
@@ -167,7 +174,7 @@ Each record is short on purpose. A decision that needs three pages of justificat
 
 **Decision.** Ship a 100-run human-labelled calibration set, report Cohen's κ per rubric dimension, and use the judge as a gate only at κ ≥ 0.80. Below that it is advisory.
 
-**Why.** An uncalibrated judge does not solve the trust problem, it relocates it — you have replaced "do I trust the agent" with "do I trust the grader", and the second question is usually never asked. Judges have known, measurable biases: position, verbosity, leniency clustering, self-preference and sycophancy. Reporting agreement is the only honest way to use one.
+**Why.** An unchecked judge does not solve the trust problem. It just moves it somewhere else — you have replaced "do I trust the agent" with "do I trust the grader", and the second question is usually never asked. Judges have known, measurable biases: position, verbosity, leniency clustering, self-preference and sycophancy. Reporting agreement is the only honest way to use one.
 
 **Cost.** 100 human labels, and re-labelling whenever the judge model changes. This is the single most tedious task in the project and the one most worth doing.
 
@@ -193,7 +200,7 @@ Each record is short on purpose. A decision that needs three pages of justificat
 
 **Decision.** A field-level registry in `connectors/resolver.py`. Conflicts are returned as values, never resolved silently.
 
-**Why.** Reality does not cooperate: the ERP owns contract price, the portal owns what the supplier confirmed, logistics owns the real delivery date, the CRM owns which contract applies. A system-level nomination forces the wrong answer somewhere. And the resolver deliberately does not decide what a conflict *means* — that is a rule, and the same disagreement can be a normal business variance in one context and a data-quality incident in another.
+**Why.** Reality is not that simple: the ERP owns contract price, the portal owns what the supplier confirmed, logistics owns the real delivery date, the CRM owns which contract applies. A system-level nomination forces the wrong answer somewhere. The resolver also refuses to decide what a conflict *means*. That is a rule. The same disagreement can be a normal business variance in one situation and a data-quality incident in another.
 
 **Cost.** A registry to maintain per field, and every consumer must handle `conflicts` being non-empty. Enforced by the type: `Resolved[T]` carries the list.
 
@@ -232,7 +239,7 @@ As informative as what is in. Each of these was considered and declined for a st
 | Fine-tuning | The bottleneck here is control and integration, not model capability. Fine-tuning would add cost, an MLOps surface and reproducibility problems while solving nothing on the critical path. |
 | A web UI | The review queue is an API with a diff payload. A React front end would be the largest component in the repository and would demonstrate nothing about applied AI engineering. |
 | Real vendor integrations | Requires credentials nobody reading this has, and would make the repository unrunnable. The mocks carry the realistic friction instead. |
-| Kubernetes manifests | A single container and a compose file match the actual deployment. Manifests for a cluster that does not exist are decoration. |
+| Kubernetes manifests | A single container and a compose file match the actual deployment. Writing manifests for a cluster that does not exist is pointless. |
 | A message broker | `asyncio` queues match the scale. The interface is in place; swapping in Redis is documented in [scalability.md](scalability.md) §8. |
 | Open-ended autonomy | No part of this domain benefits from an agent setting its own goals in a procurement ledger. |
 | Multi-modal input | Scanned-document OCR is a real problem and an entirely separate one. Extraction is tested on text and tables. |
@@ -240,7 +247,7 @@ As informative as what is in. Each of these was considered and declined for a st
 | A prompt-management SaaS | Prompts are versioned in code with recorded pass rates, so they move with the tests that validate them. |
 | Agent-to-agent negotiation | Interesting, and unrelated to whether a purchase order was confirmed correctly. |
 
-The pattern: **anything that adds surface without adding evidence was cut.** A repository that does a few things properly and says clearly what it does not do is more credible than one that gestures at everything.
+The pattern: **anything that adds surface without adding evidence was cut.** A repository that does a few things properly, and says plainly what it does not do, is more convincing than one that hints at everything.
 
 ---
 
@@ -250,9 +257,13 @@ The pattern: **anything that adds surface without adding evidence was cut.** A r
 
 **Decision.** A shared `openai_compat.py` adapter for the providers that genuinely speak `POST /v1/chat/completions` (OpenAI, Groq, OpenRouter, Ollama), plus native adapters for Anthropic and Google. Every provider declares a `ProviderCapabilities` object, and each tier resolves to an ordered provider chain defined in configuration.
 
-**Why.** The SMALL tier is a commodity — the models are interchangeable and the cheapest healthy endpoint wins, so one adapter over four base URLs is exactly right. The LARGE tier is not a commodity: that is where prompt caching, native tool-use blocks and the vendor's own token accounting are worth having, and the OpenAI-compatibility endpoints Anthropic and Google offer are a lowest-common-denominator translation that discards them. Paying for a distinctive capability and then accessing it through a generic shim is the worst of both.
+**Why.** Small models are a commodity. They are interchangeable, and the cheapest working endpoint wins. One adapter pointed at four different URLs is exactly right for them.
 
-The capability object is what makes the chain safe. Providers are **not** interchangeable, and the specific failure this prevents is quiet: send a tool-calling request to a model that lacks tool support and it returns a fluent paragraph describing the call it would have made. Nothing raises. The router checks capabilities before dispatch instead.
+Large models are not a commodity. That is where prompt caching, native tool-use blocks and the vendor's own token counting are worth having. The OpenAI-compatible endpoints Anthropic and Google offer are a stripped-down translation that throws all of that away.
+
+Paying extra for a special capability and then reaching it through a generic adapter gives you the worst of both.
+
+The capability object is what makes the chain safe. Providers are **not** interchangeable. The failure this prevents is a quiet one. Send a tool-calling request to a model that does not support tools, and it replies with a fluent paragraph describing the call it would have made. Nothing throws an error. The router checks capabilities before dispatch instead.
 
 **Cost.** Two adapter shapes rather than one, and a capability matrix that has to stay honest — a provider whose declared capabilities are wrong fails confusingly. Mitigated by a per-provider contract test: each provider runs the same suite and must behave as it declares, which is the provider-layer analogue of the runtime conformance suite in [ADR-002](#adr-002--two-runtimes-behind-one-protocol).
 

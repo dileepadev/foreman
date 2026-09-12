@@ -77,7 +77,7 @@ The base install is **four packages** — Pydantic, pydantic-settings, httpx and
 | `tomllib` in the standard library | Reading `pricing.toml` and policy tables with no dependency |
 | `asyncio.TaskGroup` | Structured concurrency in `bounded_gather` |
 
-3.12 rather than 3.13 for dependency availability, and not below 3.12 because `TaskGroup` and the typing improvements are load-bearing.
+3.12 rather than 3.13 for dependency availability, and not below 3.12 because `TaskGroup` and the typing improvements are essential here.
 
 ### uv
 
@@ -221,7 +221,11 @@ The package lives at `src/foreman/`, which is why every contract below names `fo
 | **uvicorn[standard]** | ASGI server; `standard` adds uvloop and httptools |
 | **sse-starlette** | Server-sent events for run streaming |
 
-*Rejected:* Flask and Django (sync-first, and the async story is retrofitted); raw Starlette (FastAPI's validation and OpenAPI are the reason to use it); WebSockets (SSE is one-directional, which is what streaming run events actually is — and it survives proxies better).
+*Rejected:*
+
+- **Flask, Django** — built for synchronous code; async was added later.
+- **Starlette on its own** — FastAPI's validation and OpenAPI support are the reason to use it.
+- **WebSockets** — streaming run events only goes one way, which is what SSE does, and SSE passes through proxies more reliably.
 
 ### 6.3 Agent orchestration — `graph`
 
@@ -232,7 +236,11 @@ The package lives at `src/foreman/`, which is why every contract below names `fo
 
 The native runtime depends on **none** of this — it needs only Pydantic. That is deliberate: Phase 1 ships an agent loop with no orchestration dependency at all. Reasoning: [ADR-002](decisions.md#adr-002--two-runtimes-behind-one-protocol).
 
-*Rejected:* full LangChain (LangGraph is used directly; the chain abstractions above it are not needed); CrewAI and AutoGen (role-play abstractions with too little control over the loop); Temporal (the right answer at real scale, far too much operational weight here).
+*Rejected:*
+
+- **Full LangChain** — LangGraph is used directly; the chain abstractions layered on top are not needed.
+- **CrewAI, AutoGen** — role-play abstractions that give too little control over the loop.
+- **Temporal** — the right answer at real scale, but far too much to operate here.
 
 ### 6.4 Protocol — `mcp`
 
@@ -264,9 +272,13 @@ One SDK covers four backends because they share a wire format. Full reasoning: [
 | **pypdf** | PDF text extraction |
 | **pdfplumber** | PDF **table** extraction — a price list flattened into prose loses the row/column relationship that made it useful |
 
-**Embeddings** come from the provider layer, not a separate dependency: a deterministic hash-based embedding in the mock (so retrieval tests are reproducible offline), a local embedding model via Ollama in development, and a hosted embedding endpoint when configured. Embeddings are cached by content hash and are permanently valid for a given model, so switching embedding models means a full re-index — which is why the model identifier is stored alongside every vector.
+**Embeddings** come from the provider layer, not from a separate dependency. The mock uses a fixed hash-based embedding, so search tests give the same answer every time, offline. Development uses a local embedding model in Ollama. A hosted embedding endpoint is used when one is configured. Embeddings are cached by content hash and are permanently valid for a given model, so switching embedding models means a full re-index — which is why the model identifier is stored alongside every vector.
 
-*Rejected:* LlamaIndex and LangChain retrievers (hybrid fusion in fifty lines is the lesson — [ADR-004](decisions.md#adr-004--hybrid-retrieval-instead-of-a-vector-database)); sentence-transformers (drags in PyTorch, hundreds of megabytes, for something the provider layer already does); a managed vector database (interface exists, pgvector is the swap).
+*Rejected:*
+
+- **LlamaIndex, LangChain retrievers** — writing the hybrid search in fifty lines is the point ([ADR-004](decisions.md#adr-004--hybrid-retrieval-instead-of-a-vector-database)).
+- **sentence-transformers** — pulls in PyTorch, hundreds of megabytes, for something the provider layer already does.
+- **A managed vector database** — the interface is there; pgvector is the drop-in replacement.
 
 ### 6.7 Data and analytics — `obs`, `pgvector`
 
@@ -279,13 +291,17 @@ One SDK covers four backends because they share a wire format. Full reasoning: [
 
 The run store is **SQLite via the standard library** at small scale and Postgres via psycopg at larger scale. No ORM: the schema is small, the queries are explicit, and an ORM here would be indirection without payoff. Migrations arrive with the Postgres run store in Phase 5.
 
-*Rejected:* pandas (DuckDB does the aggregation in SQL, and PyArrow handles the interchange); SQLAlchemy and Alembic (deferred, not rejected — they arrive if and when the relational schema justifies them); a hosted warehouse (nothing here approaches the data volume).
+*Rejected:*
+
+- **pandas** — DuckDB does the aggregation in SQL, and PyArrow moves the data.
+- **SQLAlchemy, Alembic** — postponed rather than rejected. They arrive if the database schema ever justifies them.
+- **A hosted warehouse** — nothing here comes close to that much data.
 
 ### 6.8 Observability — `obs`
 
 | Package | Role |
 | --- | --- |
-| **opentelemetry-sdk** | Span creation in a standard shape, so no backend is load-bearing |
+| **opentelemetry-sdk** | Span creation in a standard format, so no single backend is essential |
 | **opentelemetry-exporter-otlp** | Export to any OTLP collector |
 | **langfuse** | LLM-native backend: generations with tokens and cost, prompt versions, scores, datasets. Self-hosted via compose, so the zero-budget constraint holds. |
 
@@ -303,7 +319,12 @@ The **JSONL sink is in the base package**, not this group. Tracing must work wit
 | **mypy** | `--strict`, enforced in CI |
 | **import-linter** | Enforces the architectural layering contracts in §5 |
 
-*Rejected:* black plus isort plus flake8 (ruff is one tool and orders of magnitude faster); pyright (mypy's strict mode is sufficient and its plugin ecosystem is better here); tox and nox (uv groups plus CI matrix cover it); `unittest` (pytest fixtures and parametrisation carry the conformance suites).
+*Rejected:*
+
+- **black + isort + flake8** — ruff replaces all three and is far faster.
+- **pyright** — mypy's strict mode is enough, and its plugins suit this project better.
+- **tox, nox** — uv's dependency groups plus the CI matrix already cover this.
+- **`unittest`** — pytest's fixtures and parametrisation are what make the shared test suites possible.
 
 ---
 
@@ -363,13 +384,13 @@ All prefixed `FOREMAN_` except provider keys, which keep their conventional name
 
 | Rule | Reason |
 | --- | --- |
-| Floors in `pyproject.toml`, exact pins in `uv.lock` | Reproducible installs without a resolver straitjacket |
+| Floors in `pyproject.toml`, exact pins in `uv.lock` | Installs are reproducible without over-constraining the resolver |
 | `uv.lock` committed; CI runs `uv sync --locked` | A stale lockfile fails the build instead of silently resolving something else |
 | Dependency updates are their own commit | A bump is never buried in a feature diff |
 | Monthly update cadence, plus immediate security patches | Predictable, and small enough to review |
 | **Model IDs pinned exactly, never aliases** | An alias that moves is a change to the system nobody made — the canary check in [evaluation.md §7](evaluation.md#7-drift-detection) exists because of this |
 
-Model version pinning is the one that bites hardest, and it is not a package-manager problem: `uv.lock` cannot protect you from a provider repointing an alias.
+Pinning the model version causes the most trouble, and it is not something a package manager can fix: `uv.lock` cannot protect you from a provider repointing an alias.
 
 ---
 
@@ -421,7 +442,7 @@ Each considered and declined for a stated reason. Fuller treatment in [ADR-016](
 | Poetry / pip-tools / PDM | uv | [ADR-009](decisions.md#adr-009--uv-for-packaging) |
 | black / isort / flake8 | ruff | One tool, one config, far faster |
 | Streamlit / Gradio / React | An API with a diff payload | A front end would be the largest component and would demonstrate nothing about applied AI engineering |
-| Kubernetes / Helm | One container, one compose file | Manifests for a cluster that does not exist are decoration |
+| Kubernetes / Helm | One container, one compose file | Writing manifests for a cluster that does not exist is pointless |
 | Prometheus / Grafana | DuckDB + Langfuse | The metrics are LLM-shaped; a time-series stack would be a second system |
 
 ---

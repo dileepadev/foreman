@@ -35,7 +35,7 @@ Both sides in one repository means the tests can drive a real conversation over 
 
 ## 2. Base protocol
 
-JSON-RPC 2.0. Three message shapes, and the distinction between them is load-bearing.
+JSON-RPC 2.0. Three message shapes, and the difference between them matters.
 
 | Shape | Has `id` | Expects a reply | Example |
 | --- | --- | --- | --- |
@@ -124,7 +124,7 @@ portal://confirmations/{confirmation_id}
 logistics://shipments/{shipment_id}
 ```
 
-**Reads must have no side effects.** A resource read that mutates is a protocol violation and, more practically, a bug that surfaces as phantom writes when a host prefetches resources for a picker UI.
+**Reading must never change anything.** A resource read that writes is a protocol violation. In practice it shows up as mysterious writes appearing when the host application pre-loads resources to populate a picker.
 
 ### 4.3 Prompts
 
@@ -241,7 +241,12 @@ Requirements Foreman implements and tests:
 
 The server must never accept a token and forward it to a downstream service. When Foreman's MCP server calls the ERP connector, it exchanges the caller's identity for its **own** downstream credential and records the delegation in the audit log.
 
-Passthrough looks convenient and breaks four things at once: it bypasses the downstream service's rate limiting and validation, it destroys accountability in audit logs, it lets a compromise of one service move laterally, and it makes the trust boundary undefinable.
+Passing the token through looks convenient, and it breaks four things at once:
+
+- it skips the downstream service's rate limiting and validation
+- it destroys accountability, because audit logs no longer show who really acted
+- it lets an attacker who compromises one service move sideways into others
+- it makes the trust boundary impossible to define
 
 ---
 
@@ -260,7 +265,7 @@ MCP's power is that a model can call tools. That is also the entire attack surfa
 | **Session hijacking** | A predictable or leaked `Mcp-Session-Id` reused | Cryptographically random session IDs bound to the authenticated principal |
 | **DNS rebinding** | A web page reaches a locally-bound HTTP MCP server | `Origin` validation, localhost binding, authentication on every request |
 
-The load-bearing principle across all of these: **authorisation is enforced in code at dispatch, never in a prompt.** Every threat above assumes the model can be manipulated. Foreman's controls hold when it has been.
+The key principle behind all of these: **authorisation is enforced in code at dispatch, never in a prompt.** Every threat above assumes the model can be manipulated. Foreman's controls hold when it has been.
 
 ---
 

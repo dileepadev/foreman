@@ -2,9 +2,21 @@
 
 **An enterprise agent platform that shows its work.**
 
-Foreman runs real operational processes — supplier order confirmation, multi-way matching, exception escalation — as autonomous agents, and treats the unglamorous parts as first-class: deterministic business rules, idempotent writes, permission-aware retrieval, full execution traces, and a human review path for anything irreversible.
+Foreman uses AI agents to run a real business process: checking supplier order confirmations, matching them against orders and invoices, and escalating the cases a human needs to see.
 
-> Most agent demos invert the ratio that matters. In enterprise automation roughly **80% of the work is deterministic software engineering** — business rules, validation, integration, audit — and roughly **20% is probabilistic inference**, handling unstructured extraction, ambiguity and fuzzy entity matching. Foreman is built the right way round, and the module boundaries make it explicit: every component is either deterministic or model-driven, never quietly both.
+It takes the unexciting parts seriously:
+
+- Business rules live in code, not in prompts.
+- A write cannot happen twice, even if the network fails halfway through.
+- Search respects the permissions of the person asking.
+- Every step is recorded.
+- A human approves anything that cannot be undone.
+
+> Most AI agent demos get the balance backwards.
+>
+> In real business automation, about **80% of the work is ordinary software engineering**: business rules, validation, talking to other systems, keeping an audit trail. Only about **20% needs an AI model**, and that part is reading messy documents, handling unclear cases, and matching names that are written differently.
+>
+> Foreman is built that way round. Every part of the system is either deterministic or model-driven, never both at once, and the folder structure makes clear which is which.
 
 ---
 
@@ -31,14 +43,16 @@ Foreman runs real operational processes — supplier order confirmation, multi-w
 
 ### What Foreman is
 
-A reference implementation of an applied-AI system for enterprise process automation, built to production engineering standards and readable end to end. Every architectural claim in this specification is backed by a module and a test, or it is marked as not built.
+A reference implementation of an applied-AI system for business process automation. It is built to professional engineering standards, and it is meant to be read from start to finish.
+
+Every claim in this specification is backed by a folder and a test, or it is clearly marked as not yet built.
 
 ### What Foreman is not
 
 | Not | Because |
 | --- | --- |
 | A production system | No real tenant data, no SLA, no on-call rotation. The engineering standards are production-grade; the operational commitments are not. |
-| A framework | Foreman is an application. It borrows a framework where a framework earns its keep and hand-rolls where the mechanism is the lesson. |
+| A framework | Foreman is an application. It uses a framework where a framework is genuinely worth it, and writes code by hand where the mechanism itself is the thing worth understanding. |
 | A model-training project | No fine-tuning, no pre-training. Everything is inference, retrieval, orchestration and control. |
 | A vendor integration | Connectors target mock ERP, CRM, procurement and logistics systems with realistic shapes. No proprietary APIs, no employer systems, no customer data. |
 | A benchmark chase | Correctness, auditability and cost control are the objectives. Leaderboard scores are not. |
@@ -56,7 +70,7 @@ These are hard constraints, and they shape the design more than any preference d
 
 ## 2. Capability coverage map
 
-Each capability maps to exactly one owning module and one deep-dive document. Nothing is claimed that is not built, and nothing is built that no document explains.
+Each capability maps to exactly one folder and one detailed document. Two rules apply: nothing is claimed unless it is built, and nothing is built unless a document explains it.
 
 ### Agent engineering
 
@@ -149,11 +163,15 @@ Each capability maps to exactly one owning module and one deep-dive document. No
 
 ## 3. The domain
 
-Foreman automates **procure-to-pay exception handling**, a process chosen because it is unglamorous, rule-dense, and impossible to fake with a chat interface.
+Foreman automates **procure-to-pay exception handling**. This process was chosen for three reasons: it is unexciting, it is full of real rules, and you cannot fake it with a chat window.
 
 ### The process
 
-A buyer issues a purchase order. The supplier returns a confirmation — as a PDF, an email body, a portal record or an EDI-shaped payload — that may differ from the order in price, quantity or promised date. Goods arrive and a receipt is recorded. An invoice arrives. Somebody has to decide, thousands of times a month, whether each difference is acceptable.
+A buyer issues a purchase order. The supplier sends back a confirmation. It might be a PDF, an email, a record in a web portal, or a structured data file in EDI format.
+
+That confirmation may not match the order. The price, the quantity or the promised date can each be different.
+
+Later the goods arrive and a receipt is recorded. Then an invoice arrives. Somebody has to decide, thousands of times a month, whether each difference is acceptable.
 
 ### Why it is a good agent problem
 
@@ -232,13 +250,15 @@ flowchart TB
 
 ### The line that matters
 
-The deterministic core and the model layer are separate boxes on purpose. A tolerance comparison is a subtraction, not an inference. A spend threshold is a rule in version control, not a sentence in a system prompt.
+The deterministic core and the model layer are separate boxes on purpose.
+
+Checking whether a price is within 3% of the agreed price is subtraction. A model should not be guessing at it. A spending limit is a rule in version control, not a sentence in a prompt.
 
 Three invariants enforce that line in code:
 
 1. **No module imports both `rules/` and `providers/`.** The agent composes them; neither knows about the other.
 2. **Every model output crosses a Pydantic boundary** before it reaches a rule, a tool argument or a write.
-3. **Every write is authorised by `security/rbac.py` at dispatch**, after the model has chosen and before anything happens. A model that decides to exceed its ceiling still cannot.
+3. **Every write is checked by `security/rbac.py` at dispatch** — after the model has chosen, and before anything actually happens. If the model decides to spend over its limit, it still cannot.
 
 Full layer-by-layer treatment: [architecture.md](architecture.md).
 
@@ -246,11 +266,13 @@ Full layer-by-layer treatment: [architecture.md](architecture.md).
 
 ## 5. Runtime and framework decisions
 
-The most consequential decision in an agent project is what you build and what you borrow. Foreman's answer is explicit.
+The biggest decision in an agent project is what you write yourself and what you take off the shelf. Here is the answer, stated plainly.
 
 ### Runtime protocol, two implementations
 
-Both runtimes satisfy the same `Runtime` protocol, use the same tool registry, obey the same policy engine, and emit the same trace schema. A shared conformance suite runs against both — that is what keeps this a design decision rather than two half-finished engines.
+Both runtimes implement the same `Runtime` interface. They share the tool registry, the rules engine and the trace format.
+
+One test suite runs against both, and they must behave identically. That suite is what makes this a deliberate choice rather than two half-finished engines.
 
 | | **Native runtime** | **Graph runtime** |
 | --- | --- | --- |
@@ -283,7 +305,7 @@ Alternatives considered and why they lost: [decisions.md](decisions.md) — ADR-
 | Tool registry and schema generation | Framework-native tools | Read/write separation and write ceilings need to live in the registry itself |
 | Rules engine | A BRMS | Twelve rules with versions and provenance. A rules product would be more machinery than domain. |
 | Hybrid retrieval and rank fusion | A vector database | Dense + BM25 fusion in fifty lines shows why vector-only search loses part numbers |
-| Idempotency, retry, concurrency primitives | Off-the-shelf | Small, load-bearing and worth being able to explain line by line |
+| Idempotency, retry, concurrency primitives | Off-the-shelf | Small, critical, and worth being able to explain line by line |
 
 ---
 
@@ -293,47 +315,121 @@ Condensed statements of intent. Each links to the document that specifies it ful
 
 ### 6.1 Deterministic core → [architecture.md](architecture.md)
 
-Domain models are Pydantic v2 with field-level constraints, so an invalid `PurchaseOrder` cannot be constructed. The rules engine evaluates versioned policies and returns **which rule fired**, not a boolean — an escalation that cannot name its cause is not auditable. Three-way matching is pure and total.
+Data models use Pydantic v2, with limits set on each field, so an invalid `PurchaseOrder` cannot be created in the first place.
+
+The rules engine works through versioned policies and returns **which rule fired**, not just true or false. An escalation that cannot say why it happened is no use to a reviewer or an auditor.
+
+Three-way matching is a pure function: same inputs give the same answer, it never throws, and every case is covered.
 
 ### 6.2 Agent runtime → [agent-architecture.md](agent-architecture.md)
 
-Four stopping conditions: explicit terminal signal, step ceiling, token ceiling, cycle detection over a sliding window. Halting returns a `StopReason` **and the partial state** — an escalation carries context, it does not just stop. Tools are registered with an explicit `mutates` flag; the registry tracks reads and writes separately and RBAC enforces the difference at dispatch.
+Four things can stop the loop:
+
+- the model says it is finished
+- it has taken too many steps
+- it has used too many tokens
+- it is going round in circles
+
+When it stops, it returns the reason **and everything it worked out so far**. An escalation carries its context with it; it does not just give up.
+
+Every tool is registered with a `mutates` flag saying whether it changes anything. The registry keeps read tools and write tools apart, and the permission check enforces that difference at dispatch.
 
 ### 6.3 Memory → [memory.md](memory.md)
 
-Four tiers with explicit eviction policy: the **context window** (what the model sees this turn), **working state** (structured facts held outside the window), **retrieved** (pulled on demand, cited, never silently persisted), and **episodic** (past runs for the same supplier, summarised). Tool outputs are projected to needed fields before entering the window, and summarisation is triggered by a budget, not a vibe.
+Four kinds of memory, each with a clear rule for what gets dropped when space runs short:
+
+- **Context window** — what the model can see on this turn.
+- **Working state** — the facts this run has established, held outside the window.
+- **Retrieved** — looked up when needed, always cited, never quietly saved.
+- **Episodic** — a summary of past runs for the same supplier.
+
+Tool results are cut down to the fields that matter before they enter the window. Summarising is triggered by a token budget, not by guesswork.
 
 ### 6.4 MCP → [mcp.md](mcp.md)
 
-Full protocol coverage against the 2025-11-25 revision. Server features: tools, resources, prompts, completion, `listChanged` notifications, cursor pagination. Client features: sampling, roots, elicitation. Utilities: progress, cancellation, logging, tasks. Transports: stdio and Streamable HTTP. Authorization: OAuth 2.1 resource server with Protected Resource Metadata, audience-bound tokens and an explicit no-token-passthrough rule.
+Full coverage of the protocol as of revision 2025-11-25.
+
+- **Server features:** tools, resources, prompts, completion, change notifications, paging.
+- **Client features:** sampling, roots, elicitation.
+- **Utilities:** progress, cancellation, logging, long-running tasks.
+- **Transports:** stdio and Streamable HTTP.
+- **Authorization:** OAuth 2.1, where a token must have been issued for this server specifically, and a firm rule against passing a caller's token on to another service.
 
 ### 6.5 Connectors and integration → [integration.md](integration.md)
 
-Four mock systems with divergent conventions, because the divergence is what makes mapping meaningful. Source-of-truth is resolved **per field, not per system**: one system owns price, another owns promised date. Conflicts are detected and surfaced, never silently resolved. Auth patterns are demonstrated one per connector: API key, OAuth 2.1 client credentials, service account, and delegated user token with single-flight refresh.
+Four fake systems that deliberately name and format things differently. That difference is exactly what makes field mapping a real problem worth solving.
+
+Which system to trust is decided **per field, not per system**. One system owns the price; another owns the promised date. When they disagree, the disagreement is reported, never quietly settled.
+
+Each connector shows a different way to log in:
+
+- an API key
+- OAuth 2.1 client credentials
+- a service account
+- a user token that refreshes itself safely when many requests need it at the same moment
 
 ### 6.6 Retrieval → [retrieval.md](retrieval.md)
 
-Hybrid dense + BM25 with reciprocal rank fusion and a tokeniser that preserves hyphens, so `WDG-003-A` and `WDG-003-B` stay distinguishable. ACL filtering is applied **before scoring**: asking a model not to use what it can already see is not access control. Generation cites inline and surfaces contract-versus-amendment conflicts with dates rather than picking a winner. GraphRAG answers the multi-hop question vector search cannot: *if this component is discontinued, which parent assemblies and delivery schedules are affected?*
+Search combines two methods and merges their rankings: embeddings for meaning, and BM25 for exact words. The word-splitter keeps hyphens, so `WDG-003-A` and `WDG-003-B` stay two different part numbers instead of collapsing into the same words.
+
+Permission filtering happens **before** ranking. Telling a model to ignore a document you have already shown it is not access control.
+
+Answers include citations. When a contract and a later amendment disagree, both are shown with their dates, rather than the system quietly picking one.
+
+The knowledge graph answers questions ordinary search cannot, such as: *if this component is discontinued, which assemblies and delivery schedules are affected?*
 
 ### 6.7 Models → [models.md](models.md)
 
-One `LLMProvider` protocol over a scripted mock, a local SLM via Ollama, and hosted providers — OpenAI, Anthropic, Google, Groq and OpenRouter — each declaring its capabilities so the router never dispatches a step a provider cannot serve. A tier resolves to an ordered provider chain from configuration, so changing vendor is editing TOML. The router selects per step — small model for extraction, classification and routing; frontier for genuine judgement — and `cost.py` accounts tokens per run so the saving is **measured rather than asserted**. A hard budget ceiling with a kill switch is a first-class feature, not a nice-to-have.
+One `LLMProvider` interface covers a scripted fake model, a local model through Ollama, and five hosted providers: OpenAI, Anthropic, Google, Groq and OpenRouter. Each one declares what it supports, so the router never sends a job to a provider that cannot handle it.
+
+Each job size maps to an ordered list of providers, set in a config file. Switching vendor means editing TOML, not code.
+
+The router chooses per step. A small model handles extraction, classification and routing. A large model is used only where real judgement is needed. `cost.py` counts tokens for every run, so the saving is **measured, not claimed**.
+
+A hard spending limit with an off switch is a core feature, not an optional extra.
 
 ### 6.8 Security, privacy and governance → [security.md](security.md)
 
-Guardrails in three layers: **input** (injection heuristics, PII detection, untrusted-content delimiting), **output** (schema validation, groundedness, policy compliance), **action** (RBAC allow-lists, write ceilings, idempotency, mandatory HITL above thresholds). The attack corpus ships as tests. Privacy covers PII redaction in traces, retention windows and erasure across the trace store, warehouse and vector index — the requirement most systems discover too late.
+Guardrails run at three points:
+
+- **Input** — look for prompt injection, detect personal data, and clearly mark anything that came from outside.
+- **Output** — check it against a schema, check the claims are supported, check it follows policy.
+- **Action** — check permissions, enforce spending limits, block duplicate writes, and require a human above set thresholds.
+
+The collection of real attacks ships as tests.
+
+Privacy means removing personal data from traces, keeping data only as long as it is needed, and deleting it from the trace store, the analytics warehouse and the search index. That last part is the requirement most systems discover far too late.
 
 ### 6.9 Observability and evaluation → [observability.md](observability.md), [evaluation.md](evaluation.md)
 
-OpenTelemetry spans exported to Langfuse, with append-only JSONL as the zero-dependency fallback. A DuckDB medallion warehouse turns traces into KPIs including **silent-error rate** — completions that were wrong and were not flagged. Evaluation runs golden traces with property assertions, a judge calibrated against human labels, drift monitors on input distribution and outcome rates, and shadow mode with writes suppressed.
+Traces are OpenTelemetry spans, sent to Langfuse. If Langfuse is not running, they are written to a plain JSONL file instead, so a trace is never lost.
+
+A small DuckDB warehouse turns those traces into metrics. The most important one is the **silent-error rate**: runs that finished with the wrong answer and flagged nothing.
+
+Testing has four parts:
+
+- run recorded scenarios and check what the agent did
+- score the judge against human ratings
+- watch for drift in both the incoming data and the outcomes
+- run a shadow mode that reasons normally but blocks every write
 
 ### 6.10 Scalability → [scalability.md](scalability.md)
 
-Async-first I/O with a synchronous facade for scripting, blocking work quarantined to a thread pool, bounded concurrency with per-item isolation, per-tenant rate limits and token-bucket quotas, backpressure at the queue rather than the connection, and a three-tier cache: exact, semantic and provider prompt cache.
+The system is async throughout, with a small synchronous wrapper for scripts.
+
+- Blocking work is moved to a thread pool, so it cannot stall everything else.
+- The number of jobs running at once is capped, and one failure does not stop the others.
+- Each tenant gets its own rate limits and quotas.
+- Under overload the queue pushes back, instead of connections silently dying.
+- Three caches: exact repeats, similar questions, and the provider's own prompt cache.
 
 ### 6.11 Service and operations → [operations.md](operations.md), [runbook.md](runbook.md)
 
-FastAPI with SSE streaming, run history, a HITL review queue carrying a diff payload a reviewer can act on in seconds, and webhook escalation. Packaged with uv and a multi-stage Docker build. CI runs lint, types, tests, the security corpus and **the evaluation suite as a merge gate** — a pull request that regresses the golden traces or blows the cost budget does not merge.
+FastAPI serves the API, streams events while a run is in progress, keeps the run history, and provides a review queue. Each review item shows a before-and-after comparison a human can act on in seconds. Escalations can also be sent out by webhook.
+
+Packaged with uv and a multi-stage Docker build.
+
+CI runs the linter, the type checker, the tests, the attack corpus, and **the evaluation suite as a merge blocker**. A pull request that makes the recorded scenarios worse, or pushes the cost per run too high, does not merge.
 
 ---
 
@@ -354,7 +450,7 @@ FastAPI with SSE streaming, run history, a HITL review queue carrying a diff pay
 | Graph | **Neo4j** *(optional, Docker)* | Cypher traversal, with an in-memory fallback so tests need no service |
 | Analytics | **DuckDB** + **Parquet** | Medallion layering for metrics without a warehouse |
 | Local models | **Ollama** *(optional)* | Model routing demonstrated against a real local endpoint |
-| Hosted models | **OpenAI · Anthropic · Google · Groq · OpenRouter** *(all optional)* | Selectable per tier from configuration; no vendor is load-bearing |
+| Hosted models | **OpenAI · Anthropic · Google · Groq · OpenRouter** *(all optional)* | Chosen per tier in a config file; no single vendor is essential |
 | Tracing | **OpenTelemetry** + **Langfuse** | Standard shape; Langfuse self-hosted via compose or free tier |
 | Testing | **pytest** + **pytest-asyncio** + **hypothesis** | Property assertions, async fixtures, generative tests on the rules engine |
 | Quality | **ruff**, **mypy --strict** | Enforced in CI |
@@ -369,7 +465,7 @@ Complete dependency list, group layout, version policy, licence posture and what
 
 ## 8. Non-functional requirements
 
-Targets are measured by `obs/metrics.py` and asserted where the assertion is meaningful. They describe the reference workload — a 12-line purchase order against the mock connectors — not a capacity promise.
+These targets are measured by `obs/metrics.py`, and tested wherever a test is meaningful. They describe one reference workload: a 12-line purchase order running against the fake connectors. They are not a promise about capacity.
 
 ### Performance
 
@@ -417,9 +513,9 @@ Targets are measured by `obs/metrics.py` and asserted where the assertion is mea
 
 ## 9. Repository layout
 
-Phase markers show when a module first appears. Directories are created when their phase starts — empty folders for future phases read as abandoned scaffolding.
+The phase label shows when a folder first appears. Folders are created when their phase begins. Empty folders for future phases look like abandoned work, so they are not created early.
 
-**Path convention.** Foreman uses a `src/` layout, so the importable package is `src/foreman/`. Throughout this documentation a module is cited by its path *inside* the package — `rules/engine.py` means `src/foreman/rules/engine.py`, and imports read `from foreman.rules import engine`. The src layout matters here for a specific reason: top-level `models/`, `utils/` and `core/` directories are generic enough to shadow real distributions on `sys.path`, and a flat layout also lets tests import the working directory instead of the installed package.
+**Path convention.** Foreman uses a `src/` layout, so the importable package is `src/foreman/`. Throughout this documentation a module is cited by its path *inside* the package — `rules/engine.py` means `src/foreman/rules/engine.py`, and imports read `from foreman.rules import engine`. There are two specific reasons for the src layout. First, folder names like `models/`, `utils/` and `core/` are so common that at the top level they can hide real installed packages. Second, without it, tests can accidentally import the working folder instead of the package that was actually installed.
 
 ```text
 foreman/
@@ -563,7 +659,11 @@ foreman/
 
 ## 10. Build plan
 
-Six phases. **Each ends with a command that either passes or does not.** Phases are dependency order, not a schedule — do not start one before the previous gate is green. A repository that does two things properly beats one that does eight halfway.
+Six phases. **Each one ends with a command that either passes or fails.**
+
+They run in this order because each phase needs the one before it, not because of a calendar. Do not start a phase until the previous checkpoint passes.
+
+A repository that does two things properly is better than one that does eight halfway.
 
 ### Phase 0 — Scaffold
 
@@ -618,16 +718,21 @@ uv run foreman run --scenario price-variance    # escalates, names the rule that
 - **Grounded generation** — inline citations required; conflict detection between a base contract and a later amendment, surfacing both with dates.
 - **GraphRAG** — entity graph with multi-hop traversal and community summaries. In-memory by default; Cypher against Neo4j when configured.
 
-**Gate:** retrieval returns the correct chunk for an exact part number where dense-only fails; a query as a role lacking permission returns nothing from restricted documents; graph traversal answers a two-hop impact question; `uv run pytest tests/test_rag.py tests/test_ingestion.py` green.
+**Gate:**
+
+- searching an exact part number finds the right chunk, in a case where embedding search alone fails
+- a user without permission gets nothing back from restricted documents
+- the knowledge graph answers a question that needs two hops
+- `uv run pytest tests/test_rag.py tests/test_ingestion.py` passes
 
 ### Phase 4 — Observability and evaluation
 
-- **Tracing** — OpenTelemetry spans covering step index, reasoning, tool, arguments, output, latency and tokens, with append-only JSONL as the no-dependency fallback and a CLI viewer, because an unreadable trace is just a log file.
+- **Tracing** — OpenTelemetry spans recording the step number, the reasoning, the tool, its arguments, the result, how long it took and how many tokens it used. If no tracing service is available, it writes a JSONL file instead. A command-line viewer renders it, because a trace nobody can read is just a log file.
 - **Langfuse export** — trace → generation → span → event.
 - **Warehouse** — DuckDB medallion: bronze raw traces, silver conformed runs, gold aggregated KPIs, persisted as Parquet.
 - **Metrics** — auto-resolution rate, escalation rate, tool failure rate by tool, latency percentiles, cost per run, and **silent-error rate**: completions that were wrong and were not flagged. That last one decides whether anyone trusts the system.
 - **Golden suite** — scenarios with property assertions on tool invocation order, forbidden-tool invariants, arguments and final state.
-- **Judge** — rubric scoring across accuracy, safety, completeness, tool selection and escalation appropriateness. **Ship a human-labelled calibration set and report agreement** — an uncalibrated judge just relocates the trust problem.
+- **Judge** — rubric scoring across accuracy, safety, completeness, tool selection and escalation appropriateness. **Include a set of examples scored by a human, and report how closely the judge agrees** — an unchecked judge does not solve the trust problem, it just moves it.
 - **Drift** — input distribution and outcome rates over time, alerting on rate of change rather than single events.
 - **Shadow mode** — write tools suppressed, decisions recorded and diffed against human decisions.
 
@@ -640,11 +745,23 @@ uv run foreman run --scenario price-variance    # escalates, names the rule that
 - **RBAC** — tool allow-lists per role, hard write ceilings, soft escalation bands, tenant isolation. Enforced at dispatch, never in a prompt.
 - **Privacy** — PII detection and redaction in traces, retention windows, and erasure that reaches the trace store, the warehouse and the vector index.
 - **Governance** — model, prompt and rule versions recorded per run; hash-chained append-only decision log.
-- **API** — FastAPI with API-key, OAuth 2.1 and service-account authentication; per-tenant rate limits and concurrency caps; SSE run streaming; run history and resume; HITL queue where each item carries a **diff payload** — expected versus confirmed, the rule that fired, a link to the source — and `approve`/`reject` completes it.
+- **API** — FastAPI, providing:
+  - three ways to log in: API key, OAuth 2.1, service account
+  - rate limits and concurrency caps for each tenant
+  - live event streaming while a run is in progress
+  - run history, and the ability to resume a paused run
+  - a review queue where each item shows a **before-and-after comparison**: what was expected, what the supplier confirmed, which rule fired, and a link to the source document. A reviewer approves or rejects, and that closes the item.
 - **MCP over HTTP** — Streamable HTTP transport with OAuth 2.1 resource-server authorization, Protected Resource Metadata discovery and audience validation.
 - **Webhooks** — signed escalation delivery carrying the diff.
 
-**Gate:** `uv run uvicorn api.main:app` serves; a run streams over SSE; an over-tolerance scenario produces a review item with a usable diff; **an injected document fails to trigger a write because RBAC blocks it regardless of what the model decided**; a token issued for another audience is rejected by the MCP HTTP endpoint; `uv run pytest tests/test_security.py tests/test_api.py` green.
+**Gate:**
+
+- `uv run uvicorn api.main:app` starts and serves requests
+- a run streams its events live
+- a scenario that breaks the tolerance produces a review item with a usable comparison
+- **a document containing an injected instruction does not cause a write, because the permission check blocks it no matter what the model decided**
+- the MCP HTTP endpoint rejects a token that was issued for a different service
+- `uv run pytest tests/test_security.py tests/test_api.py` passes
 
 ### Phase 6 — Orchestration, models and delivery
 
@@ -657,7 +774,13 @@ uv run foreman run --scenario price-variance    # escalates, names the rule that
 - **Caching** — exact, semantic and provider prompt cache, with hit rate reported.
 - **Delivery** — multi-stage Dockerfile, compose with Neo4j, Postgres+pgvector, Ollama and Langfuse as **optional** services, and CI running lint, types, tests, the security corpus and the evaluation gate.
 
-**Gate:** the conformance suite passes against both runtimes; CI green on a clean clone; `docker compose up` starts the stack; a run interrupted for review resumes after a process restart; the router demonstrably reduces cost per run against a single-frontier-model baseline.
+**Gate:**
+
+- the shared test suite passes against both runtimes
+- CI passes on a fresh clone
+- `docker compose up` starts everything
+- a run paused for review resumes correctly after the process restarts
+- the router measurably lowers the cost per run compared with using one large model for everything
 
 ---
 

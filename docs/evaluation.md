@@ -60,7 +60,7 @@ These are the tests that find real bugs. Example-based tests confirm what you th
 
 ### Coverage targets
 
-`rules/` and `utils/` at ≥ 95%. These are small, pure, load-bearing and cheap to cover completely — there is no excuse for a gap there. Elsewhere, coverage is reported and not gated, because coverage targets on integration code produce tests written to satisfy a percentage.
+`rules/` and `utils/` at ≥ 95%. These are small, pure, critical, and cheap to cover completely — there is no excuse for a gap there. Elsewhere, coverage is reported and not gated, because coverage targets on integration code produce tests written to satisfy a percentage.
 
 ---
 
@@ -114,7 +114,7 @@ Scored 1–5 per dimension, with anchored descriptions for each point so the sca
 
 ### Calibration is not optional
 
-**An uncalibrated judge relocates the trust problem rather than solving it.** Foreman ships a human-labelled calibration set and reports agreement.
+**An unchecked judge does not solve the trust problem. It just moves it somewhere else.** Foreman ships a human-labelled calibration set and reports agreement.
 
 | Step | Detail |
 | --- | --- |
@@ -196,9 +196,9 @@ Systems degrade without any code changing. Suppliers change document formats, a 
 | Cost | Cost per run rising with no config change | Warehouse trend |
 | Model | Provider changes the model behind an alias | Canary prompts with known-stable answers |
 
-**Alert on rate of change, not on absolute values.** An escalation rate of 12% may be normal; an escalation rate that went from 8% to 12% in two days is a signal regardless of whether 12% is acceptable.
+**Alert on how fast something changes, not on the number itself.** An escalation rate of 12% may be perfectly normal. An escalation rate that moved from 8% to 12% in two days is worth investigating, whether or not 12% is acceptable.
 
-The canary is the one people skip. A fixed prompt with a known-stable expected answer, run daily — when the provider silently changes the model behind an alias, this is what tells you, and it is the difference between "the agent started behaving differently and we found out in a week" and "we found out that morning."
+The canary is the one people skip. It is a fixed prompt with a known answer, run once a day. When a provider quietly swaps the model behind an alias, this is what catches it. The difference is finding out that morning instead of a week later.
 
 ---
 

@@ -95,7 +95,7 @@ An unreadable trace is just a log file. The renderer is not a nice-to-have; it i
 
 ## 3. OpenTelemetry and Langfuse
 
-Spans are emitted in OpenTelemetry shape, so any OTel-compatible backend works and no vendor is load-bearing.
+Spans are emitted in OpenTelemetry shape, so any OpenTelemetry-compatible backend works and no single vendor is essential.
 
 **Langfuse** is the default backend when configured, because it understands LLM-specific concepts natively — generations with token counts and cost, prompt versions, scores attached to traces, and datasets for offline experiments. Self-hosted via `docker compose`, so the zero-budget constraint holds.
 
@@ -227,7 +227,7 @@ Questions the gold tables are built to answer:
 | Write | 50ms |
 | Trace and record | 20ms |
 
-Deterministic work is a rounding error. **Latency is inference and network, which is why routing to smaller models improves latency and cost together.**
+The rule-based work takes almost no time at all. **Latency is inference and network, which is why routing to smaller models improves latency and cost together.**
 
 ### Profiling
 

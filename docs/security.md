@@ -204,13 +204,13 @@ ROLES = {
 
 ### Properties
 
-**The agent has its own role.** It is not a user impersonation. Its authority is the intersection of its own role and the invoking principal's — the agent can never exceed the human who triggered it, and never exceeds its own ceiling regardless of who that human is.
+**The agent has its own role.** It is not a user impersonation. Its permissions are whatever its own role and the caller's role both allow. So the agent can never do more than the person who started it, and never more than its own limit, no matter who that person is.
 
 **Ceilings are hard; bands are soft.** Above `requires_human_above`, the action is prepared and routed to a reviewer. Above `max_write_value`, it is refused outright — no human override in-band, because an in-band override is a social-engineering target.
 
 **Enforcement is at dispatch.** `security/rbac.py` sits between the tool registry and execution. The model's choice is a proposal.
 
-**Read/write separation is structural.** The registry tracks them separately, so a read-only principal receives a registry that genuinely contains no write tools — the model is never shown a capability it cannot use, which removes the temptation and the failure mode together.
+**Read and write tools are kept apart in the structure itself.** The registry tracks them separately, so a read-only user gets a registry that genuinely contains no write tools. The model is never shown something it cannot use, which removes both the temptation and the failure at once.
 
 ### Denials are audited
 
@@ -285,7 +285,13 @@ The connector projection layer is a privacy control as much as an engineering on
 | Vector index | Source-governed | Delete source → re-index removes chunks |
 | Episodic memory | 180 days | Delete by entity key |
 
-**Erasure is a tested path, not a policy statement.** `tests/test_privacy.py` asserts that after an erasure request for a supplier contact, the identifier appears in none of: the trace store, the warehouse, the vector index, the graph, or the episodic store. Most systems discover at audit time that erasure only ever covered the primary database.
+**Deletion is a tested code path, not a policy document.** After a deletion request for a supplier contact, `tests/test_privacy.py` checks that the identifier is gone from all five places:
+
+- the trace store
+- the analytics warehouse
+- the search index
+- the knowledge graph
+- episodic memory Most systems discover at audit time that erasure only ever covered the primary database.
 
 ### Cross-border and provider handling
 
@@ -339,7 +345,7 @@ Not a compliance claim — this is a learning project with no real data. Recorde
 
 ## 10. Testing
 
-Security claims are tests or they are decoration.
+A security claim is either a test or it is just words.
 
 | Suite | Asserts |
 | --- | --- |

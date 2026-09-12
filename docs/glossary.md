@@ -127,7 +127,7 @@ Domain and platform vocabulary, so the documents and the code use words the same
 | **Golden trace** | A recorded run replayed as property assertions. |
 | **Property assertion** | An assertion about a trajectory rather than an exact output — "never called `confirm_order_line`". |
 | **Silent error** | A run that completed without escalating and was wrong. The metric the system is organised around. |
-| **Escalation precision** | The proportion of escalations a human agreed with. Low precision trains reviewers to rubber-stamp. |
+| **Escalation precision** | The proportion of escalations a human agreed with. If precision is low, reviewers learn to approve without reading. |
 | **LLM-as-judge** | Using a model to score qualities that cannot be asserted. Advisory until calibrated. |
 | **Calibration** | Measuring judge–human agreement, reported as Cohen's κ per dimension. |
 | **Shadow mode** | Running against real inputs with writes suppressed, diffing against human decisions. |

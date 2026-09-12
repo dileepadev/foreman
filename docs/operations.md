@@ -56,7 +56,12 @@ Runs `ruff`, `ruff format`, `mypy` on changed files, secret scanning, and a chec
 
 The complete dependency list with per-package rationale lives in [tech-stack.md](tech-stack.md); this section covers the workflow.
 
-uv over pip, Poetry or pip-tools for four reasons that matter to this project specifically: a real lockfile, resolution fast enough that CI is not waiting on it, dependency groups that keep the default install tiny, and one tool for environment, install and run.
+uv was chosen over pip, Poetry and pip-tools for four reasons that matter to this project:
+
+- a real lockfile
+- fast enough that CI is not left waiting on dependency resolution
+- dependency groups, which keep the default install tiny
+- one tool for the environment, installing, and running commands
 
 ### Layout
 
@@ -73,7 +78,7 @@ dev = ["pytest", "pytest-asyncio", "pytest-cov", "hypothesis", "ruff", "mypy", "
 
 The full file, including every group, the tool configuration and the `import-linter` contracts, is in [tech-stack.md §5](tech-stack.md#5-the-complete-pyprojecttoml). It is maintained in one place on purpose — a `pyproject.toml` duplicated across two documents drifts within a week.
 
-**The base install is four packages.** Everything else is a group, which is what makes "runs on a clean clone with no services" true rather than aspirational. A reader who only wants to see the rules engine and the agent loop installs almost nothing.
+**The base install is four packages.** Everything else is a group, which is what makes "runs on a clean clone with no services" true rather than just a hope. A reader who only wants to see the rules engine and the agent loop installs almost nothing.
 
 ### Lockfile discipline
 
@@ -146,7 +151,7 @@ docker compose up -d             # everything
 | Ollama | Local model inference | Mock provider |
 | Langfuse | Trace UI, datasets, scores | JSONL traces + CLI viewer |
 
-**Every fallback is exercised in CI.** A fallback that is never tested is a fallback that does not work, and it will be discovered at the worst moment — when the service it replaces has just gone down.
+**Every fallback is tested in CI.** A fallback nobody tests is a fallback that does not work. You find that out at the worst possible moment: when the service it was meant to replace has just gone down.
 
 ---
 

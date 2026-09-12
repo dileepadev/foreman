@@ -2,7 +2,7 @@
 
 > Status: specification. Connectors, auth strategies, resolver and mapping are Phase 2.
 
-Four mock enterprise systems, four authentication patterns, and the machinery that makes writes safe when the network does not cooperate. This is the layer where most agent projects quietly fail, because the demo used one clean API and production has four dirty ones.
+Four mock enterprise systems, four authentication patterns, and the machinery that keeps writes safe when the network misbehaves. This is the layer where most agent projects quietly fail, because the demo used one clean API and production has four dirty ones.
 
 ## Table of contents
 
@@ -33,7 +33,7 @@ The divergence is the point. If all four spoke the same dialect, `mapping/` woul
 
 ### The realistic detail that costs the most time
 
-`portal` returns `"unit_price": "1234.56"` as a string in the supplier's locale; the ERP returns `unitPrice: 1234.56` as a float in minor units. Getting a tolerance comparison right across those two representations is a `Decimal` conversion, a currency check and a units check — none of which a model should be doing, and all of which belong in the connector's projection.
+`portal` returns `"unit_price": "1234.56"` as a string in the supplier's locale; the ERP returns `unitPrice: 1234.56` as a float in minor units. Comparing a tolerance across those two formats needs three things: a `Decimal` conversion, a currency check and a units check. A model should not be doing any of them. All three belong in the connector, as it converts the response.
 
 ---
 
@@ -116,7 +116,7 @@ async def token(self) -> str:
     return self._access
 ```
 
-The double-check inside the lock is not decoration. Without it, every waiter refreshes in turn after acquiring the lock, which is the bug the lock was added to prevent.
+The second check inside the lock is not there for show. Without it, every waiter refreshes in turn after acquiring the lock, which is the bug the lock was added to prevent.
 
 ### Comparison
 
@@ -131,7 +131,7 @@ The double-check inside the lock is not decoration. Without it, every waiter ref
 
 ## 4. Source of truth per field
 
-The naive design nominates one system as authoritative. Reality does not cooperate.
+The naive design nominates one system as authoritative. Reality is not that simple.
 
 `connectors/resolver.py` holds a field-level registry:
 

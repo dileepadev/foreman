@@ -41,7 +41,7 @@ The split is roughly 80/20 by volume of code and by number of decisions. It is c
 | ACL filtering | Ranking retrieved passages by relevance |
 | Write authorisation | Drafting the escalation message |
 
-The test for which side something belongs on: **can two competent people, given the same inputs and the policy document, disagree about the correct answer?** If not, it is a rule, and putting it in a prompt is a bug.
+Here is the test for which side something belongs on. **Given the same inputs and the same policy document, could two competent people disagree about the right answer?** If they could not, it is a rule. Putting it in a prompt is a bug.
 
 ---
 
@@ -65,7 +65,7 @@ This layer composes the deterministic core and the model layer. It is the only l
 
 Pure functions and validated data. No I/O, no network, no clock reads that are not injected, no model calls. Fully testable without fixtures beyond data.
 
-Because it has no dependencies on anything above it, this layer is where property-based testing pays off — `hypothesis` can generate thousands of purchase orders and assert that the matching function is total and never raises.
+This layer depends on nothing above it, which is what makes property-based testing worthwhile here. `hypothesis` can generate thousands of purchase orders and check that the matching function handles every one of them without throwing.
 
 ### 2.4 Model layer — `providers/`
 
@@ -95,7 +95,7 @@ Five rules that CI enforces, because an architecture that relies on discipline a
 | 4 | `rules/` and `models/` import nothing from `agent/`, `api/`, `connectors/` or `providers/` | Import-linter contract |
 | 5 | Every mutating connector call carries an idempotency key | Connector base class requires it in the signature |
 
-Invariant 3 is the one that matters most. It means the answer to "what if the model is tricked into confirming a $2M order?" is not "the prompt says not to" — it is "the tool dispatch rejected it, and there is a trace of the attempt."
+Invariant 3 is the one that matters most. It means the answer to "what if the model is tricked into confirming a $2M order?" is not "the prompt tells it not to". The answer is: "the tool dispatch refused, and the attempt is in the trace."
 
 ---
 
@@ -130,7 +130,7 @@ flowchart TB
     T12 --> T13
 ```
 
-Steps ④, ⑥, ⑦, ⑨ and ⑫ involve no inference at all. Steps ⑤ and ⑪ are the only places a model is load-bearing, and both are bounded: extraction is validated against a schema, retrieval is cited.
+Steps ④, ⑥, ⑦, ⑨ and ⑫ involve no inference at all. Steps ⑤ and ⑪ are the only places where a model actually decides anything, and both are bounded: extraction is validated against a schema, retrieval is cited.
 
 ### Where humans enter
 
@@ -142,7 +142,7 @@ At ⑩ only. A run that escalates persists its full state, emits a review item a
 
 ### Source of truth is per field, not per system
 
-The naive design nominates one system as authoritative. Reality does not cooperate: the ERP owns the contractual price, the portal owns what the supplier actually confirmed, the logistics system owns the real delivery date, and the CRM owns which contract applies.
+The naive design nominates one system as authoritative. Reality is not that simple: the ERP owns the contractual price, the portal owns what the supplier actually confirmed, the logistics system owns the real delivery date, and the CRM owns which contract applies.
 
 `connectors/resolver.py` holds a field-level registry:
 
@@ -179,7 +179,9 @@ Four categories of state, with different durability requirements. Conflating the
 | Run history | Run store (SQLite → Postgres) | Durable | Retention window |
 | Knowledge | Vector index, graph, warehouse | Durable, rebuildable from source | Until source deleted |
 
-The rule: **anything that cannot be rebuilt must be checkpointed; anything that can be rebuilt should not be stored.** The context window is rebuilt from working state on every step, which is what makes summarisation safe — you are compacting a projection, not destroying the record.
+The rule has two halves: **anything that cannot be rebuilt must be saved. Anything that can be rebuilt should not be.**
+
+The context window is rebuilt from working state at every step. That is what makes summarising it safe: you are shrinking a view of the data, not destroying the data itself.
 
 Detail: [memory.md](memory.md).
 

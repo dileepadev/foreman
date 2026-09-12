@@ -145,7 +145,7 @@ Triggered by budget, not by turn count. When a segment exceeds its allocation, t
 | **Abstractive summary** | Prior step history | A narrative of what was established | Exact wording |
 | **Eviction** | Resolved lines | Nothing needed again | Detail recoverable from the trace |
 
-Order matters. Projection is free and lossless for the decision. Abstractive summarisation costs a model call and can lose a number, so it is last and it is verified: **the summariser must preserve every numeric fact and citation present in the input**, and a property test asserts it on the golden corpus.
+Order matters. Projection is free and lossless for the decision. Writing a fresh summary costs a model call and can lose a number, so it comes last and it is checked. **The summariser must keep every number and every citation from the input**, and a property test verifies that against the reference documents.
 
 ### What is never compacted
 

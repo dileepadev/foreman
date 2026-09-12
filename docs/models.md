@@ -40,7 +40,7 @@ class LLMProvider(Protocol):
 
 ### Capabilities are declared, not assumed
 
-Providers are not interchangeable. Some support native tool calling, some support schema-constrained decoding, some support neither. Sending a tool-calling request to a model that cannot do it does not raise — it returns a plausible paragraph *describing* the call it would have made, which only registers as a failure if something was checking.
+Providers are not interchangeable. Some support native tool calling, some support schema-constrained decoding, some support neither. Send a tool-calling request to a model that cannot do it and nothing throws an error. You get back a believable paragraph *describing* the call it would have made. That only shows up as a failure if something was checking for it.
 
 ```python
 class ProviderCapabilities(BaseModel):
@@ -53,7 +53,7 @@ class ProviderCapabilities(BaseModel):
     max_context: int
 ```
 
-The router refuses to dispatch a step to a provider whose capabilities do not cover it, and the structured-output ladder in §5 is chosen from this object rather than from a hardcoded assumption about the vendor.
+The router will not send a step to a provider that cannot handle it. The structured-output strategy in §5 is also picked from this object, rather than from a hardcoded guess about the vendor.
 
 `ProviderResponse` always carries content or a tool call, plus input tokens, output tokens, cached tokens, latency, the resolved model identifier and the computed cost. **Every call is accounted, including the ones that fail**, because a retry storm against a frontier model is a bill whether or not it produced anything.
 
@@ -128,13 +128,13 @@ base_url = "http://localhost:11434/v1"
 api_key  = "none"
 ```
 
-Anthropic and Google get **native adapters** rather than being pushed through their OpenAI-compatibility endpoints. Those endpoints exist and work, but they are a lowest-common-denominator translation: you give up prompt-caching control, native tool-use blocks and the provider's own token accounting.
+Anthropic and Google get **native adapters** rather than being pushed through their OpenAI-compatibility endpoints. Those endpoints exist and work, but they are a stripped-down translation: you give up prompt-caching control, native tool-use blocks and the provider's own token accounting.
 
 **The rule: use the compatibility layer where the provider is a commodity endpoint, use the native API where you are paying for that provider's distinctive capability.** The SMALL tier is a commodity. The LARGE tier is not.
 
 ### Model IDs are pinned, never aliased
 
-Configuration names an exact model version. An alias that silently moves to a new model is a change to the system that nobody made and nobody can see, and it is the most common cause of an agent that "started behaving differently" with no commit to blame. The canary check in [evaluation.md](evaluation.md) §7 exists because this happens.
+Configuration names an exact model version. An alias that quietly points at a new model is a change to your system that nobody made and nobody can see. It is the most common reason an agent "starts behaving differently" with no commit to explain it. The canary check in [evaluation.md](evaluation.md) §7 exists because this happens.
 
 ### Adding a provider
 
@@ -265,7 +265,11 @@ Extraction returns `extraction_confidence` per field, and it is used, not decora
 | 0.7 – 0.9 | Proceed, flag on the review item |
 | < 0.7 | Escalate **that line**, not the run |
 
-Self-reported confidence from a model is weakly calibrated, so it is combined with structural signals: whether the field was found in a table or in prose, whether the value is plausible against the PO, whether a second extraction pass agrees.
+A model's own confidence score is not very reliable on its own, so it is combined with three other signals:
+
+- Was the field found in a table, or in loose prose?
+- Is the value plausible compared with the purchase order?
+- Does a second extraction pass agree?
 
 ---
 
@@ -315,11 +319,13 @@ Four ceilings. The first three are checked **before** the call; the fourth is en
 
 The first three are checked before rather than after, because a budget discovered after the spend is a report, not a control. The estimate uses the input token count plus the configured maximum output, priced at the **selected provider's** rate — which is why the provider chain re-estimates on fallback.
 
-**The fourth is the one that actually protects the wallet.** The first three are code, and code has bugs; a spend limit set on the API key itself is enforced by the provider and survives any mistake in this repository. OpenRouter exposes it directly — a key carries `limit` and `limit_remaining`, queryable at `GET /api/v1/key`. Most vendors offer an equivalent.
+**The fourth one is what actually protects your wallet.** The first three are code, and code has bugs. A spending limit set on the API key itself is enforced by the provider, so it survives any mistake in this repository.
+
+OpenRouter offers this directly: a key carries `limit` and `limit_remaining`, which you can check at `GET /api/v1/key`. Most other vendors have something equivalent.
 
 > **Set a hard cap on every key you issue, whatever else you do.** It is the only budget control in this document that does not depend on Foreman being correct.
 
-**This is what makes a learning project safe to leave running.** A misconfigured loop against a frontier API is the classic way to turn a side project into a bill, and layering an application guard under a vendor-enforced cap means it takes two independent failures rather than one.
+**This is what makes a learning project safe to leave running.** A badly configured loop calling a paid API is the classic way to turn a side project into a large bill. Putting an application guard underneath a vendor-enforced cap means two separate things have to fail, not one.
 
 ---
 
@@ -333,7 +339,7 @@ Three layers, cheapest first.
 | **Semantic** | Embedding similarity above a threshold | 5–15% | Everything, at some risk |
 | **Provider prompt cache** | Stable prefix | High on repeated system prompts | Input tokens only |
 
-Semantic caching is **off by default and disabled entirely for anything that feeds a write**. Two questions that embed similarly can have different correct answers, and a cache hit that returns the answer for a different purchase order is a silent error — the exact failure class this system exists to eliminate. It is enabled only for read-only explanatory queries, with the similarity threshold set high and cache hits marked in the trace.
+Semantic caching is **off by default and disabled entirely for anything that feeds a write**. Two questions can look almost identical to an embedding model and still have different correct answers. A cache hit that returns the answer for a different purchase order is a silent error, which is exactly the failure this system exists to prevent. It is enabled only for read-only explanatory queries, with the similarity threshold set high and cache hits marked in the trace.
 
 Prompt caching is free money and needs only one discipline: **keep the stable prefix stable.** Putting a timestamp or a run ID at the top of the system prompt defeats it entirely.
 
@@ -392,4 +398,6 @@ Which model, prompt and rule version produced a decision is recorded per run in 
 | Prompt change | Golden suite; pass rate recorded |
 | Routing change | Cost benchmark; the saving must not come from quality |
 
-The pattern across all four: **nothing that affects a decision changes without a measurement.** Model version pinning matters more than it looks — an alias silently upgrading is a change to your system that you did not make and cannot see, and it is the most common cause of an agent that "started behaving differently" with no commit to blame.
+The pattern across all four: **nothing that affects a decision changes without being measured first.**
+
+Pinning the model version matters more than it looks. When an alias quietly upgrades, your system has changed without you doing anything, and without any way to see it. It is the most common reason an agent starts behaving differently with no commit to explain it.

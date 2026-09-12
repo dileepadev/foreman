@@ -20,7 +20,7 @@
 For any alert, in order:
 
 1. **Is anything being written wrongly?** If yes, disable writes first (§5). Stopping the bleeding beats diagnosis.
-2. **What is the blast radius?** One tenant, one scenario, or everything?
+2. **How much is affected?** One tenant, one scenario, or everything?
 3. **What changed?** Recent deploy, model version, connector, policy, corpus. `governance/registry.py` records model, prompt and rule versions per run — start there.
 4. **Get a trace.** `foreman trace <run-id>` on an affected run.
 5. **Reproduce.** `foreman run --scenario <name> --replay <run-id>` against the mock provider.
@@ -123,8 +123,14 @@ Never skip step 5. A fix without a regression test is an invitation to repeat.
 **Symptom:** `CYCLE_DETECTED` or `MAX_STEPS` rate rising.
 
 1. Trace an affected run and find the repeating signature.
-2. Usual causes: a tool returning an error the model cannot act on, a missing tool for a needed action, an ambiguous prompt after a change, or a tool description that does not state a precondition.
-3. Fix the tool's error message or description before touching the prompt — a `ToolError` with a good `suggestion` fixes more loops than prompt edits do.
+2. Usual causes:
+
+- a tool returns an error the model cannot do anything with
+- there is no tool for an action the agent needs
+- a prompt became ambiguous after a change
+- a tool description does not mention a precondition
+
+1. Fix the tool's error message or description before touching the prompt — a `ToolError` with a good `suggestion` fixes more loops than prompt edits do.
 
 ### 4.7 Review queue backing up — Sev 3
 
@@ -132,7 +138,7 @@ Never skip step 5. A fix without a regression test is an invitation to repeat.
 
 1. Is it volume or staffing? Compare escalation rate to baseline.
 2. If escalation precision is low, the queue is full of items that did not need a human — fix precision and the queue drains.
-3. Apply the ageing policy: unreviewed items escalate to a higher authority or expire per policy. **They must never sit silently**, because an unattended queue eventually gets rubber-stamped, which converts a throughput problem into a silent-error problem.
+3. Apply the ageing policy: unreviewed items escalate to a higher authority or expire per policy. **They must never sit silently**, because a queue nobody is watching eventually gets approved without being read, which turns a backlog problem into a wrong-answer problem.
 
 ### 4.8 Model behaviour changed with no deploy — Sev 3
 
