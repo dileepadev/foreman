@@ -791,12 +791,14 @@ Version numbers follow [VERSIONING.md](../VERSIONING.md). Cuts are defined by ca
 | Cut | Contains | Publicly defensible claim |
 | --- | --- | --- |
 | `v0.2.0` | Specification and documentation set | "Here is the design, the decisions and what is deliberately excluded." |
-| `v0.3.0` | Phase 1 | "A deterministic core and an agent loop with real stopping conditions, tested." |
+| `v0.3.0` | Phases 0–1 | "A deterministic core and an agent loop with real stopping conditions, tested." |
 | `v0.4.0` | Phases 2–3 | "MCP, four enterprise connectors, hybrid and graph retrieval." |
 | `v0.5.0` | Phases 4–5 | "Traced, evaluated, guarded and served." |
 | `v1.0.0` | Phase 6 | "Two conformant runtimes, routed models, containerised, CI-gated on evaluation." |
 
-Each cut updates [CHANGELOG.md](../CHANGELOG.md) and the README status table before tagging.
+Phase 0 has no cut of its own. Its gate is that the test suite collects zero tests without error, which is not something to release, so it ships with Phase 1.
+
+Each cut updates [CHANGELOG.md](../CHANGELOG.md) and the README status table before tagging. Every phase is tracked as a GitHub issue whose title carries its target version.
 
 ---
 
