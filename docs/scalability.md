@@ -63,7 +63,7 @@ Four rules, each of which exists because breaking it produces a bug that is hard
 **1. Never block the event loop.** A synchronous HTTP call, a `time.sleep`, or a large CPU operation inside a coroutine stalls **every** concurrent run in the process. The symptom is baffling: unrelated requests time out and the profiler shows nothing wrong. CPU-bound work goes to a thread:
 
 ```python
-result = await anyio.to_thread.run_sync(embed_batch, chunks)
+result = await asyncio.to_thread(embed_batch, chunks)
 ```
 
 **2. Every await has a timeout.** An `await` with no timeout is an unbounded wait, and a connector that hangs rather than failing will exhaust the concurrency limit and take the process with it. Timeouts are set per operation, not globally.
