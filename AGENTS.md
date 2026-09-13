@@ -10,7 +10,7 @@ It follows the [agents.md](https://agents.md/) standard: one file at the reposit
 
 Foreman handles supplier order confirmations using AI agents. It is a reference implementation built to professional standards. It is not a live production system.
 
-**Current state: specification. There is no code yet.** Work starts at Phase 0. Read [docs/FOREMAN_SPEC.md](docs/FOREMAN_SPEC.md) before you write anything.
+**Current state: Phase 0 complete.** The scaffold, configuration and error taxonomy exist; there is no agent yet. Phase 1 is next. Read [docs/FOREMAN_SPEC.md](docs/FOREMAN_SPEC.md) before you write anything.
 
 The main idea, which answers most design questions on its own:
 
@@ -182,7 +182,7 @@ Documentation ships with the code it describes. If you change a module, update i
 
 ## 5. Commands
 
-> Phase 0 has not run yet, so none of these work. They are the commands the phase checkpoints are measured against.
+> After Phase 0 the tooling commands all work. The `foreman run` / `trace` / `eval` commands and the servers do not exist yet — they arrive with later phases, and are the commands those checkpoints are measured against.
 
 ```bash
 uv sync                                  # install: base packages plus dev tools
