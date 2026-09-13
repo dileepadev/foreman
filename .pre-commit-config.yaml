@@ -1,0 +1,47 @@
+# Fast enough not to be disabled, which is the only property that matters.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+        # Two trailing spaces is the Markdown hard-line-break convention.
+        # Without this, the hook strips it and silently changes how the
+        # community docs render.
+        args: ["--markdown-linebreak-ext=md"]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Pinned to the version in uv.lock. A different ruff version here would
+    # mean the hook and `uv run ruff` can disagree about the same code.
+    rev: v0.16.7
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict)
+        entry: uv run mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: import-linter
+        name: import contracts
+        entry: uv run lint-imports
+        language: system
+        pass_filenames: false
+        always_run: true

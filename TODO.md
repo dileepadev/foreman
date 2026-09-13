@@ -12,7 +12,7 @@ Phases are **dependency order, not a schedule**. Each phase ends with a gate tha
 | Phase | Scope | Status |
 | --- | --- | --- |
 | [Specification](#specification) | Design documentation | ✅ Complete |
-| [Phase 0](#phase-0--scaffold) | Scaffold | ⬜ Not started |
+| [Phase 0](#phase-0--scaffold) | Scaffold | 🟡 Complete, [PR #11](https://github.com/dileepadev/foreman/pull/11) open — not on `main` yet |
 | [Phase 1](#phase-1--deterministic-core-and-the-agent-loop) | Deterministic core and the agent loop | ⬜ Not started |
 | [Phase 2](#phase-2--protocol-and-integration) | Protocol and integration | ⬜ Not started |
 | [Phase 3](#phase-3--knowledge) | Knowledge | ⬜ Not started |
@@ -40,21 +40,52 @@ Phases are **dependency order, not a schedule**. Each phase ends with a gate tha
 - [x] Architecture decision records and glossary
 - [x] Complete tech stack: dependency groups, versions, licences, supply chain
 - [x] [AGENTS.md](AGENTS.md) — the rules, conventions, phase order and definition of done for AI coding agents, following the [agents.md](https://agents.md/) standard
+- [x] [AGENTS.md](AGENTS.md) — "Asking before you act": never commit, push, merge or run a writing `gh` command without being asked
 
 ---
 
 ## Phase 0 — Scaffold
 
-- [ ] `uv init` with a `src/` layout — the package is `src/foreman/`, console script `foreman.cli:app`
-- [ ] Dependency groups per [tech-stack.md §4](docs/tech-stack.md#4-dependency-groups): `dev`, `api`, `mcp`, `graph`, `models`, `rag`, `pgvector`, `obs`
-- [ ] Commit `uv.lock`
-- [ ] `core/errors.py` — `TransientError`, `PermanentError`, `ToolError`, `PolicyViolation`, `BudgetExceeded`
-- [ ] `core/config.py` — settings, secrets as `SecretStr`, a feature flag per optional service
-- [ ] `.env.example` documenting every variable
-- [ ] Package directories for Phase 1 modules only
-- [ ] `ruff`, `mypy --strict` and `import-linter` configuration
-- [ ] Pre-commit hooks including secret scanning
-- [ ] **Gate:** `uv sync` succeeds · `uv run pytest` collects zero tests without error · `uv run mypy .` clean
+> Written on `feat/phase-0-scaffold`. Every item below is done and the gate passes. **[PR #11](https://github.com/dileepadev/foreman/pull/11) is open and not merged**, so none of this is on `main` yet.
+
+- [x] `uv init` with a `src/` layout — the package is `src/foreman/`, console script `foreman.cli:app`
+- [x] Dependency groups per [tech-stack.md §4](docs/tech-stack.md#4-dependency-groups): `dev`, `api`, `mcp`, `graph`, `models`, `rag`, `pgvector`, `obs`
+- [x] Commit `uv.lock`
+- [x] `core/errors.py` — `TransientError`, `PermanentError`, `ToolError`, `PolicyViolation`, `BudgetExceeded`
+- [x] `core/config.py` — settings, secrets as `SecretStr`, a feature flag per optional service
+- [x] `.env.example` documenting every variable
+- [x] Package directories for Phase 1 modules only
+- [x] `ruff`, `mypy --strict` and `import-linter` configuration — 3 contracts kept, 0 broken
+- [x] **Pre-commit hooks including secret scanning** — `pre-commit` added to `dev`, hook installed at `.git/hooks/pre-commit`, all 13 hooks pass on `--all-files`
+- [x] **Gate:** `uv sync` succeeds · `uv run pytest` passes (46 tests) · `uv run mypy .` clean under `--strict` · `uv run lint-imports` 3 contracts kept
+
+### Verified by hand
+
+These are the checks that are awkward to automate — they involve the build, the
+installed console script, or the file on disk rather than importable behaviour.
+
+- [x] `.env.example` parses as a real `.env`, including the JSON list syntax for the provider chains
+- [x] The package builds — both a wheel and a source distribution
+- [x] `foreman version` and `foreman config` run, and `config` names providers with keys without printing any value
+
+Secret masking was on this list and is now an automated test instead —
+`tests/test_config.py::TestSecretsDoNotLeak` covers all five escape routes.
+
+### Found during review — all resolved in Phase 0
+
+- [x] ~~`pre-commit` is not installed.~~ **Fixed.** Added `pre-commit>=4.0` to the `dev` group, ran `pre-commit install`, ran `--all-files` clean. Two configuration bugs found and fixed along the way:
+  - `trailing-whitespace` was stripping the two-space Markdown hard-line-break convention, which silently reformatted `CONTRIBUTING.md` and `VERSIONING.md` on first run. Reverted those files and added `args: ["--markdown-linebreak-ext=md"]` so the hook now leaves intentional line breaks alone.
+  - The `ruff-pre-commit` hook was pinned to `v0.7.4` in its own isolated environment while `uv.lock` installs `0.16.7` — two different ruff versions checking the same code, free to disagree. Re-pinned to `v0.16.7` to match.
+  - Proved gitleaks actually blocks a commit: staged a fake OpenAI-shaped key and a fake GitHub PAT, both caught (`generic-api-key`, `github-pat`, exit 1). A real AWS example key (`AKIAIOSFODNN7EXAMPLE`) correctly passed — it is on gitleaks' default allowlist because it is AWS's own published documentation string, not a real secret. That is the scanner working as intended, not a gap.
+- [x] ~~A typo in a provider chain is silently skipped.~~ **Fixed in `core/config.py`, not deferred** — the bug lived in code that already existed, so it did not need `providers/registry.py` after all. Two layers now:
+  - A `field_validator` on `tier_small` / `tier_large` rejects unknown names *at startup*, so a typo in `.env` refuses to boot rather than quietly shortening the chain. Empty chains are rejected too.
+  - `provider_configured()` raises on an unknown name as a backstop. The documented behaviour is preserved exactly where it matters: a **missing credential** still returns `False` and gets skipped; only a **name that does not exist** fails.
+  - `KNOWN_PROVIDERS` and `KEYLESS_PROVIDERS` are now module constants, so the registry in Phase 6 has one place to read from.
+- [x] ~~Two functions have behaviour but no test.~~ **Done — 46 tests, `core/config.py` and `core/errors.py` both at 100% coverage.**
+  - `tests/test_config.py` — the zero-cost default, secret masking across five escape routes, provider resolution, chain validation, field bounds.
+  - `tests/test_errors.py` — the taxonomy, including that `PolicyViolation` deliberately has no `as_model_feedback()` method, because a refusal phrased as advice invites a workaround.
+  - Tests are hermetic: an autouse fixture clears `FOREMAN_*` variables and runs from an empty directory, so a developer's real `.env` cannot change the result. Verified by running the suite with both a hostile env var and a stray `.env` present.
+  - Mutation-tested rather than assumed: reverting the provider fix, and downgrading `SecretStr` to `str`, each turn the suite red. The masking fixture passes a plain string on purpose so that downgrade fails with "the secret leaked" instead of erroring during setup.
 
 ---
 

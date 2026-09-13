@@ -671,9 +671,12 @@ A repository that does two things properly is better than one that does eight ha
 - `core/errors.py` — the error taxonomy everything else classifies against.
 - `core/config.py` — settings with feature flags for every optional service.
 - Package directories for Phase 1 modules only.
+- Pre-commit hooks, including secret scanning, installed and proven to block a staged credential.
 - README stating what exists and what does not.
 
-**Gate:** `uv sync` succeeds; `uv run pytest` collects zero tests without error; `uv run mypy .` clean.
+**Gate:** `uv sync` succeeds; `uv run pytest` passes; `uv run mypy .` clean under `--strict`; `uv run lint-imports` reports every contract kept.
+
+The gate originally read "pytest collects zero tests without error", on the assumption that Phase 0 was pure scaffolding. It was not: `core/config.py` and `core/errors.py` carry real behaviour — provider resolution and the error taxonomy — and [AGENTS.md](../AGENTS.md) requires new behaviour to have a test. The intent was always "the suite runs clean on a fresh clone", so the gate now says that instead.
 
 ### Phase 1 — Deterministic core and the agent loop
 
@@ -805,7 +808,7 @@ Until `v0.1.0` is tagged, every issue and pull request carries `[v0.1.0]` in its
 | Phase 5 | API, security, privacy, governance | Not started |
 | Phase 6 | Second runtime, model routing, delivery | Not started |
 
-Phase 0 has no output worth releasing on its own — its gate is that the test suite collects zero tests without error — so it is simply the first step, not a cut.
+Phase 0 has no output worth releasing on its own — it is project setup, configuration and the error taxonomy, with nothing a user could run — so it is simply the first step, not a cut.
 
 ### Tagging v0.1.0
 

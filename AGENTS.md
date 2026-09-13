@@ -10,7 +10,7 @@ It follows the [agents.md](https://agents.md/) standard: one file at the reposit
 
 Foreman handles supplier order confirmations using AI agents. It is a reference implementation built to professional standards. It is not a live production system.
 
-**Current state: specification. There is no code yet.** Work starts at Phase 0. Read [docs/FOREMAN_SPEC.md](docs/FOREMAN_SPEC.md) before you write anything.
+**Current state: Phase 0 complete.** The scaffold, configuration and error taxonomy exist; there is no agent yet. Phase 1 is next. Read [docs/FOREMAN_SPEC.md](docs/FOREMAN_SPEC.md) before you write anything.
 
 The main idea, which answers most design questions on its own:
 
@@ -47,6 +47,17 @@ How to tell which side something belongs on: *given the same inputs and the same
 ## 3. Rules you must not break
 
 Breaking any of these is a bug, even if every test passes.
+
+### Asking before you act
+
+This one comes first because it gates every other rule here.
+
+1. **Never run `git commit`, `git push`, `git merge`, `git rebase` or any history-rewriting command without being asked.** Not even to tidy up. Not even to fix something you broke.
+2. **Never run a `gh` command that changes anything without being asked.** That covers creating or editing issues, pull requests, comments, labels, milestones, releases and repository settings. Reading is fine — `gh api` GET requests, `gh pr view`, `gh issue list` — because looking costs nothing and changes nothing.
+3. **Doing the work is not the same as publishing it.** Editing files, running tests, and checking the linter are expected and need no permission. Anything that touches git history or the GitHub remote waits for an explicit go-ahead.
+4. **When work is ready, stop and say so.** List what changed, what passes, and what the next command would be. Let the owner run it or tell you to.
+5. **Permission is per request, not permanent.** "Yes, commit that" covers that commit. It does not authorise the next one, and it never authorises a push, a merge or a force-push.
+6. **If something is broken on the remote, explain it and propose the fix.** Do not fix it silently, even when the fix is obvious and safe.
 
 ### Business rules
 
@@ -145,7 +156,7 @@ Before reaching for a library, check [tech-stack.md §13](docs/tech-stack.md#13-
 - Body follows [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md). Fill in every required section and tick the checklist honestly — if you did not test something, leave it unticked and say why.
 - Assign **dileepadev**, add labels, attach the milestone.
 - Link the issue it closes with `Closes #N`, so the issue closes on merge.
-- **Never merge without being asked.** Prepare it, then hand it over.
+- **Never open, merge or close a pull request without being asked.** Prepare it, then hand it over — see [Asking before you act](#asking-before-you-act).
 
 #### Commit signatures
 
@@ -171,7 +182,7 @@ Documentation ships with the code it describes. If you change a module, update i
 
 ## 5. Commands
 
-> Phase 0 has not run yet, so none of these work. They are the commands the phase checkpoints are measured against.
+> After Phase 0 the tooling commands all work. The `foreman run` / `trace` / `eval` commands and the servers do not exist yet — they arrive with later phases, and are the commands those checkpoints are measured against.
 
 ```bash
 uv sync                                  # install: base packages plus dev tools
@@ -213,6 +224,7 @@ A change is finished when all of these are true:
 - [ ] Commits are signed and show as Verified — `git log --format='%h %G? %s'` shows `G`
 - [ ] No secret, key, token or personal identifier appears in the diff, the commit message or the PR
 - [ ] The pull request has an assignee, the right labels, the milestone, and `Closes #N`
+- [ ] The change is **left uncommitted** unless the owner asked for it to be committed
 - [ ] No employer, product, customer or personal names anywhere
 
 ---
@@ -235,6 +247,8 @@ Listed roughly by how often they happen.
 | A `print()` inside an MCP stdio handler | Print to stderr. Standard output carries protocol messages, and anything else breaks the connection |
 | Reporting only how often the agent finished on its own | Always report it next to how often it was silently wrong |
 | Writing a document for a module that does not exist | Say so honestly in its status line |
+| Committing or pushing without being asked | Do the work, leave it uncommitted, say what is ready |
+| Running a `gh` command that changes something, unasked | Reading is fine; anything that writes waits for a go-ahead |
 | Merging with "Rebase and merge" | It strips commit signatures. Fast-forward push, or "Create a merge commit" |
 | Labelling a docs issue `enhancement` | Match the label to the work; the issue template names the right one |
 | Opening a PR with no assignee, label or milestone | All three, every time, plus `Closes #N` |

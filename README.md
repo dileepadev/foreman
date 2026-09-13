@@ -11,7 +11,7 @@ Foreman handles a real business process — checking supplier order confirmation
 - A human approves anything that cannot be undone.
 
 > [!IMPORTANT]
-> **Current status: specification.** The design is finished and written down. No code has been written yet. This README says what exists today and what is planned. See [Status](#status) for where each phase stands, and [docs/](docs/) for the design.
+> **Current status: Phase 0 complete.** The design is finished and written down, and the project scaffold now exists — configuration, the error taxonomy, and the quality gates. There is no agent yet: that is Phase 1. This README says what exists today and what is planned. See [Status](#status) for where each phase stands, and [docs/](docs/) for the design.
 
 ---
 
@@ -119,14 +119,20 @@ Optional services, each with a working substitute built in: **Ollama**, **Neo4j*
 
 ## Quick start
 
-> [!NOTE]
-> Not available yet — this starts working in Phase 1. These are the exact commands the Phase 1 checkpoint is measured against.
+These work today, after Phase 0:
 
 ```bash
 git clone https://github.com/dileepadev/foreman.git
 cd foreman
 uv sync
-uv run pytest                                   # passes with no API key and no internet
+uv run pytest          # passes with no API key and no internet
+uv run foreman config  # shows resolved settings; never prints a credential
+```
+
+> [!NOTE]
+> The commands below do not work yet — they arrive with the agent in Phase 1, and are the exact commands its checkpoint is measured against.
+
+```bash
 uv run foreman run --scenario happy-path        # confirms every line
 uv run foreman run --scenario price-variance    # escalates, and names the rule that fired
 ```
@@ -140,7 +146,7 @@ Phases run in order because each one needs the last, not because of a calendar. 
 | Phase | Scope | Status |
 | --- | --- | --- |
 | — | Specification and documentation | ✅ Complete |
-| 0 | Project setup — uv, error types, configuration | ⬜ Not started |
+| 0 | Project setup — uv, error types, configuration | ✅ Complete |
 | 1 | Business rules and the agent loop | ⬜ Not started |
 | 2 | MCP protocol and the four connectors | ⬜ Not started |
 | 3 | Document loading, search, knowledge graph | ⬜ Not started |
