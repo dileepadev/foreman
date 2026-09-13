@@ -11,15 +11,25 @@ See ``docs/operations.md`` section 3.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Final, Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-__all__ = ["Settings", "get_settings"]
+__all__ = ["KEYLESS_PROVIDERS", "KNOWN_PROVIDERS", "Settings", "get_settings"]
 
 Environment = Literal["dev", "test", "prod"]
 RuntimeKind = Literal["native", "graph"]
+
+#: Every provider the registry knows how to build. A name outside this set is a
+#: typo, not a provider that happens to be unconfigured, so it fails loudly.
+KNOWN_PROVIDERS: Final[frozenset[str]] = frozenset(
+    {"mock", "ollama", "openai", "anthropic", "google", "groq", "openrouter"}
+)
+
+#: Providers that need no credential. They are always available, which is what
+#: lets a chain fall through to something that always works.
+KEYLESS_PROVIDERS: Final[frozenset[str]] = frozenset({"mock", "ollama"})
 
 
 class Settings(BaseSettings):
@@ -69,15 +79,42 @@ class Settings(BaseSettings):
     run_store_url: str = "sqlite:///./foreman.db"
     trace_dir: str = "./traces"
 
+    @field_validator("tier_small", "tier_large")
+    @classmethod
+    def _reject_unknown_providers(cls, chain: list[str], info: ValidationInfo) -> list[str]:
+        """Fail at startup on a provider name that does not exist.
+
+        A missing credential and a misspelled name look identical once you are
+        only asking "is this configured?" — both answer no. The first is normal
+        and should be skipped; the second is a mistake that would otherwise
+        silently shorten the chain. Catching it here means the process refuses
+        to start rather than quietly running on a fallback nobody chose.
+        """
+        unknown = [name for name in chain if name not in KNOWN_PROVIDERS]
+        if unknown:
+            raise ValueError(
+                f"{info.field_name}: unknown provider(s) {sorted(unknown)}. "
+                f"Known providers are {sorted(KNOWN_PROVIDERS)}."
+            )
+        if not chain:
+            raise ValueError(f"{info.field_name}: a provider chain cannot be empty.")
+        return chain
+
     def provider_configured(self, name: str) -> bool:
         """Whether a provider has what it needs to run.
 
-        Used by the registry to skip a provider rather than fail on it, which is
-        what lets the default chain fall through to the mock.
+        The registry uses this to *skip* a provider rather than fail on it,
+        which is what lets a chain fall through to the mock. That behaviour is
+        only safe for names that exist, so an unknown one raises instead of
+        quietly reporting "not configured".
         """
-        if name in ("mock", "ollama"):
+        if name not in KNOWN_PROVIDERS:
+            raise ValueError(
+                f"Unknown provider {name!r}. Known providers are {sorted(KNOWN_PROVIDERS)}."
+            )
+        if name in KEYLESS_PROVIDERS:
             return True
-        key = getattr(self, f"{name}_api_key", None)
+        key: SecretStr | None = getattr(self, f"{name}_api_key", None)
         return key is not None
 
 
