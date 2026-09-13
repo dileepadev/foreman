@@ -38,6 +38,7 @@ dev = [
     "ruff>=0.7",
     "mypy>=1.13",
     "import-linter>=2.1",
+    "pre-commit>=4.0",
 ]
 api      = ["fastapi>=0.115", "uvicorn[standard]>=0.32", "sse-starlette>=2.1"]
 mcp      = ["mcp[cli]>=1.9"]
